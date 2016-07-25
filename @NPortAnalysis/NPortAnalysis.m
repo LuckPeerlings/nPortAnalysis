@@ -194,7 +194,7 @@ classdef NPortAnalysis  < matlab.mixin.SetGet
             for ii = 1:obj.NrPorts
                 for jj = 1:obj.NrPorts
                     subplot(obj.NrPorts,obj.NrPorts, (ii - 1)*obj.NrPorts + jj )
-                    plot(obj.FreqVec, angle( obj.ScatNPort.(['S',num2str(jj),num2str(ii)]) ))
+                    plot(obj.FreqVec, angle( obj.ScatNPort.(['S',num2str(jj),num2str(ii)]) )*180/pi)
                 end
             end
         end
