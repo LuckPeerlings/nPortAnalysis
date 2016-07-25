@@ -104,7 +104,7 @@ WaveNumberProp.f = pars.Results.f;
 
 
 f = pars.Results.f;
-x = pars.Results.x;
+x = pars.Results.x
 P = pars.Results.P;
 
 %PreAllocate
@@ -145,24 +145,21 @@ switch pars.Results.Method
           DecompP.Min(1:length(Decomposition{ii})/2,ii) = Decomposition{ii}(1:end/2);
           DecompP.Plus(1:length(Decomposition{ii})/2,ii) = Decomposition{ii}(end/2+1:end);
         end
-        assignin('base','Decomp',DecompP)
-        assignin('base','ConditionNR',ConditionNR)
     case 'Standard'
         k = NPortAnalysis.WaveNumber(WaveNumberProp);
         %Loop over the frequency vector, to set up the linear system of
         %eqations
         for ii = 1:length(f)
-            assignin('base','WaveNumberProp',WaveNumberProp)
-            for z = 1:length(WaveNumberProp.Model.x)
-                A(z,:) = [exp(-1i.*k.Downstream(ii).*WaveNumberProp.Model.x(z))  exp(1i.*k.Upstream(ii).*WaveNumberProp.Model.x(z))];
+            assignin('base','WaveNumberProp',WaveNumberProp)            
+            for z = 1:length(x)
+                A(z,:) = [exp(-1i.*k.Downstream(ii).*x(z))  exp(1i.*k.Upstream(ii).*x(z))];
             end
             b = P(:,ii);
             %And solve either the determined or the over determined system
             Decomposition(:,ii) = (A'*A)\(A'*b);
         end
-        DecompP.Min = Decomposition(1,:);
-        DecompP.Plus = Decomposition(2,:);   
-        assignin('base','Decomp',DecompP)
+        DecompP.Plus = Decomposition(1,:);   
+        DecompP.Min = Decomposition(2,:);
 end
 if pars.Results.GetOutput
    assignin('base','WaveDecomposition',DecompP);

@@ -97,7 +97,7 @@ classdef NPortAnalysis  < matlab.mixin.SetGet
             % Save each field of the scattering matrix in the ScatNPort.
             
             for ii = 1:length(obj.FreqVec)
-                S(:,:,ii) =  H_L(:,:,ii)\H_R(:,:,ii);
+                S(:,:,ii) =  H_L(:,:,ii)/H_R(:,:,ii);
             end
             for ii = 1:size(S,1)
                 for jj = 1:size(S,2)
