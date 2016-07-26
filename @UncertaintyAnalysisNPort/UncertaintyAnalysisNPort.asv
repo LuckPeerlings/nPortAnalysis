@@ -42,8 +42,10 @@ classdef UncertaintyAnalysisNPort < MultiVariateAnalysis
                         AlignedUCMatrix = R*reshape(TotVar(mm,:),2,2)*transp(R);
                         AlignedVar(:,mm) = AlignedUCMatrix(:);
                     end
+                    size(AlignedVar)
                     subplot(obj.ClassHandle.NrPorts,obj.ClassHandle.NrPorts, (ii - 1)*obj.ClassHandle.NrPorts + jj );
                     hold on
+                    size(ScatUV.Value)
                     plot(obj.ClassHandle.FreqVec, abs( ScatUV.Value) + 2*sqrt(AlignedVar(1,:)),'k');
                     plot(obj.ClassHandle.FreqVec, abs( ScatUV.Value),'-');
                     plot(obj.ClassHandle.FreqVec, abs( ScatUV.Value) - 2*sqrt(AlignedVar(1,:)),'k');
@@ -69,7 +71,7 @@ classdef UncertaintyAnalysisNPort < MultiVariateAnalysis
             cc = 1;
             for ii = 1:obj.ClassHandle.NrPorts
                 for jj = 1:obj.ClassHandle.NrPorts
-                    h1(cc) = subplot(obj.ClassHandle.NrPorts,obj.ClassHandle.NrPorts, (ii - 1)*obj.ClassHandle.NrPorts + jj );
+                    h(cc) = subplot(obj.ClassHandle.NrPorts,obj.ClassHandle.NrPorts, (ii - 1)*obj.ClassHandle.NrPorts + jj );
                     ScatUV = obj.Output.ScatNPort.(['S',num2str(jj),num2str(ii)]);
                     assignin('base','ScatUV',ScatUV)
                     %Get the unique groups
@@ -81,7 +83,7 @@ classdef UncertaintyAnalysisNPort < MultiVariateAnalysis
                         SummedVar(I,:,:) = SummedVar(I,:,:) + ScatUV.AlignedVar(ll,:,:);
                     end
                     RelativeVar = bsxfun(@rdivide,SummedVar(:,:,1),sum(SummedVar(:,:,1),1));
-                    area(h1(cc),obj.ClassHandle.FreqVec,RelativeVar.')
+                    area(h(cc),obj.ClassHandle.FreqVec,RelativeVar.')
                     if ii == 1 && jj == 1
                         legend(UniqueGroupNames)
                         title('Relative Contribution of variance to the magnitude uncertainty (Uncorrelated Errors)')
@@ -89,13 +91,11 @@ classdef UncertaintyAnalysisNPort < MultiVariateAnalysis
                     cc = cc +1;
                 end
             end
-            
-            
-            figure  
             cc = 1;
+            figure            
             for ii = 1:obj.ClassHandle.NrPorts
                 for jj = 1:obj.ClassHandle.NrPorts
-                    h2(cc) = subplot(obj.ClassHandle.NrPorts,obj.ClassHandle.NrPorts, (ii - 1)*obj.ClassHandle.NrPorts + jj );
+                    h(cc) = subplot(obj.ClassHandle.NrPorts,obj.ClassHandle.NrPorts, (ii - 1)*obj.ClassHandle.NrPorts + jj );
                     ScatUV = obj.Output.ScatNPort.(['S',num2str(jj),num2str(ii)]);
                     %Get the unique groups
                     UniqueGroupNames = unique([ScatUV.Group{:}]);
@@ -106,12 +106,14 @@ classdef UncertaintyAnalysisNPort < MultiVariateAnalysis
                         SummedVar(I,:,:) = SummedVar(I,:,:) + ScatUV.AlignedVar(ll,:,:);
                     end
                     RelativeVar = bsxfun(@rdivide,SummedVar(:,:,4),sum(SummedVar(:,:,4),1));
-                    area(h2(cc), obj.ClassHandle.FreqVec,RelativeVar.')
+                    area(h(cc), obj.ClassHandle.FreqVec,RelativeVar.')
+                    figure
+                    plot(sqrt(sum(SummedVar(:,:,4),1)))
                     if ii == 1 && jj == 1
                         legend(UniqueGroupNames)
                         title('Relative Contribution of variance to the phase uncertainty (Uncorrelated Errors)')
                     end
-                    cc = cc + 1;
+                    cc ?
                 end
             end
         end    

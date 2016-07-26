@@ -42,11 +42,12 @@ classdef UncertainVariable < handle
         %		the third dimension correponds to the variance, or for a complex value the covariance matrix using column based indexing.
         %Varargin(3) correponds to the degree of freedom for each variable, the first dimension should equal to the first dimension of the mean value, second dimension equal to one or the size of the second
         %		dimension of the mean value	
-        %Varargin(4) is the identifier as a cell array of strings for each
+        %Varargin(4) is the degree of freedoms, the number inf is defined.
+        %Varargin(5) is the identifier as a cell array of strings for each
         %            variable. The size of the first dimension of the cell array should
         %            equal the first dimension of the mean value. These identifiers should
         %            be unique
-        %Varargin(5) is the group indentifier, which will be used to group the end uncertainty of the measurement.
+        %Varargin(6) is the group indentifier, which will be used to group the end uncertainty of the measurement.
         if isempty(varargin)
             return
         end
@@ -111,7 +112,7 @@ classdef UncertainVariable < handle
             end
         end
         %Check for the DOF
-        
+        if isempty
         if  size(varargin{3},1) ~= VecSize 
             error('The length of the first dimension of the DOF is not equal to one or the size of the first dimension of the mean value of the UV')
         end
