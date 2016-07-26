@@ -68,8 +68,8 @@ omega = 2.*pi.*f;
 switch Model.Name
     case 'NoLoss'           
         k = omega./Prop.SpeedOfSound;
-        WaveNumber.Upstream =    k./( 1+U./Prop.SpeedOfSound );
-        WaveNumber.Downstream =  k./( 1-U./Prop.SpeedOfSound );
+        WaveNumber.Upstream =    k./( 1-U./Prop.SpeedOfSound );
+        WaveNumber.Downstream =  k./( 1+U./Prop.SpeedOfSound );
     case 'Dokumaci1995' 
         %This model is taken from "Sound Transmission in Narrow Pipes with
         %Superimposed Uniform Mean Flow and Acoustic Modelling of Automobile
@@ -79,8 +79,8 @@ switch Model.Name
         k = omega./Prop.SpeedOfSound;
         S = r.*sqrt(Prop.Density.*omega./Prop.Viscosity);
         K_0 = 1 + ( ( 1-1i )./( S.*sqrt(2) ) ).*( 1 + ( Prop.Gamma-1 )./( sqrt(Prop.Prandtl) ) );
-        WaveNumber.Upstream = k .* K_0 ./ (1+K_0.*U./Prop.SpeedOfSound);
-        WaveNumber.Downstream = k .* K_0 ./ (1-K_0.*U./Prop.SpeedOfSound);
+        WaveNumber.Upstream = k .* K_0 ./ (1-K_0.*U./Prop.SpeedOfSound);
+        WaveNumber.Downstream = k .* K_0 ./ (1+K_0.*U./Prop.SpeedOfSound);
 % 
 %         WaveNumber.Upstream = 1*real(WaveNumber.Upstream) + 1.0*1i*imag(WaveNumber.Upstream);
 %         WaveNumber.Downstream = 1*real(WaveNumber.Downstream) + 1.0*1i*imag(WaveNumber.Downstream);

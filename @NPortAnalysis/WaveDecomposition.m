@@ -104,7 +104,7 @@ WaveNumberProp.f = pars.Results.f;
 
 
 f = pars.Results.f;
-x = pars.Results.x
+x = pars.Results.x;
 P = pars.Results.P;
 
 %PreAllocate
@@ -158,8 +158,9 @@ switch pars.Results.Method
             %And solve either the determined or the over determined system
             Decomposition(:,ii) = (A'*A)\(A'*b);
         end
-        DecompP.Plus = Decomposition(1,:);   
-        DecompP.Min = Decomposition(2,:);
+        DecompP.Min = Decomposition(1,:);
+        DecompP.Plus = Decomposition(2,:);   
+       
 end
 if pars.Results.GetOutput
    assignin('base','WaveDecomposition',DecompP);

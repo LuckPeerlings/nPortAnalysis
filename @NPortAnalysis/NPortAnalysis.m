@@ -13,8 +13,6 @@ classdef NPortAnalysis  < matlab.mixin.SetGet
     methods
         function obj = checkInput(obj)
             % Function to check if the provided input is correct.            
-            
-
             % First the obtain the number of ports and independent
             % measurements
             NrPorts = length(fields(obj.Input));
@@ -87,8 +85,8 @@ classdef NPortAnalysis  < matlab.mixin.SetGet
                     InputDecomp.f = obj.FreqVec;
                     P = NPortAnalysis.WaveDecomposition( InputDecomp);
                     
-                    H_R(ii,jj,:) = P.Min(:,:); 
-                    H_L(ii,jj,:) = P.Plus(:,:);  
+                    H_R(ii,jj,:) = P.Plus(:,:); 
+                    H_L(ii,jj,:) = P.Min(:,:);  
                     
                 end
             end
@@ -103,79 +101,8 @@ classdef NPortAnalysis  < matlab.mixin.SetGet
                 for jj = 1:size(S,2)
                     obj.ScatNPort.(['S',num2str(jj),num2str(ii)]) = reshape(S(ii,jj,:),1,[]);
                 end
-            end
-            
-%             
-%             if ~obj.InputChecked
-%                 error('The input has not been checked')
-%             end
-            %Calculate the ingoing and outgoing waves for each port and
-            %measurement
-            
-%             for ii = 1:obj.NrPorts
-%                 for jj = 1:obj.NrMeas   
-%                     if isfield(obj.Input.(['Port',num2str(ii)]),'Constant')
-%                        obj.Input.(['Port',num2str(ii)]).(['Meas',num2str(jj)]) = MergeStructs( obj.Input.(['Port',num2str(ii)]).(['Meas',num2str(jj)]), obj.Input.(['Port',num2str(ii)]).('Constant') );
-%                     end
-%                     InputDecomp = obj.Input.(['Port',num2str(ii)]).(['Meas',num2str(jj)]);
-%                     InputDecomp.f = obj.FreqVec;
-%                     P = NPortAnalysis.WaveDecomposition( InputDecomp);
-%                     assignin('base',['P_',num2str(jj)],P)
-%                     
-% %                     for ff = 1:length(obj.FreqVec)
-% %                         if ii == 1
-% %                             H_R(:,jj,ff) = P.Min(:,ff); 
-% %                             H_L(:,jj,ff) = P.Plus(:,ff);  
-% %                         else                            
-% %                             H_R(:,jj,ff) = [P.Min(:,ff) H_L(ii-1,jj,ff)]; 
-% %                             H_L(:,jj,ff) = [P.Plus(:,ff) H_L(ii-1,jj,ff)];  
-% %                         end
-% %                     end
-%                     %Real Version!!!
-%                     H_R(ii,jj,:) = P.Min(1,:); 
-%                     H_L(ii,jj,:) = P.Plus(1,:);          
-%                 end
-%             end
-
-%             %Calculate the scattering matrix as function of frequency   
-%             
-% %             MaxMode = size(P.Min,1);
-% %             if obj.NrMeas == 1
-% %                 S = zeros(MaxMode,1,length(obj.FreqVec));
-% %                 for ii = 1:length(obj.FreqVec)
-% %                     H_R_Stripped = H_R(:,:,ii);
-% %                     H_R_Stripped (~all(H_R_Stripped,2), : ) = [];
-% %                     H_L_Stripped = H_L(:,:,ii);
-% %                     H_L_Stripped (~all(H_L_Stripped,2), : ) = [];
-% %                     try
-% %                     S_single = H_R_Stripped./H_L_Stripped;
-% %                     catch
-% %                         S_single = 0;
-% %                     end
-% %                     S(1:size(S_single,1),1,ii) = S_single;
-% %                 end
-% %             else
-% %                 length(obj.FreqVec)
-% %                 S = zeros(MaxMode,MaxMode,length(obj.FreqVec));
-% %                 for ii = 1:length(obj.FreqVec)
-% %                     H_R_Stripped = H_R(:,:,ii);
-% %                     H_R_Stripped (~all(H_R_Stripped,2), : ) = [];
-% %                     H_L_Stripped = H_L(:,:,ii);
-% %                     H_L_Stripped (~all(H_L_Stripped,2), : ) = [];
-% %                     
-% %                     S_single = (H_R_Stripped'*H_R_Stripped) \ (H_R_Stripped'*H_L_Stripped)
-% %                     S(1:size(S_single,1),1:size(S_single,2),ii) = S_single;
-% %                     if obj.NrMeas < size(P.Min,MaxMode)
-% %                         warning('The number of independent measurement is not enough to have a full scattering matrix')
-% %                         break
-% %                     end
-% %                 end
-% %             end
-%             
-%             
-%             %
-
-        end
+            end          
+       end
         
         function displayScatMatrix(obj)
             if ~obj.InputChecked
@@ -194,7 +121,7 @@ classdef NPortAnalysis  < matlab.mixin.SetGet
             for ii = 1:obj.NrPorts
                 for jj = 1:obj.NrPorts
                     subplot(obj.NrPorts,obj.NrPorts, (ii - 1)*obj.NrPorts + jj )
-                    plot(obj.FreqVec, angle( obj.ScatNPort.(['S',num2str(jj),num2str(ii)]) )*180/pi)
+                    plot(obj.FreqVec, unwrap(angle( obj.ScatNPort.(['S',num2str(jj),num2str(ii)]) ))*180/pi)
                 end
             end
         end
