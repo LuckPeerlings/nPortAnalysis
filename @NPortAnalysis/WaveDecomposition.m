@@ -75,6 +75,8 @@
 
 pars = inputParser;
 DEFAULT.P = [];
+DEFAULT.CoVar = [];
+DEFAULT.CompCoVar = [];
 DEFAULT.f = [];        %Default frequency
 DEFAULT.x = [];
 DEFAULT.GasProp = [];   %Default Gas Properties
@@ -84,6 +86,8 @@ DEFAULT.GetOutput = false;
 
 addParameter(pars,'f',DEFAULT.f)
 addParameter(pars,'P',DEFAULT.P)
+addParameter(pars,'CoVar',DEFAULT.CoVar)
+addParameter(pars,'CompCoVar',DEFAULT.CompCoVar)
 addParameter(pars,'x',DEFAULT.x)
 addParameter(pars,'Method',DEFAULT.Method)
 addParameter(pars,'GasProp',DEFAULT.GasProp)
@@ -106,7 +110,8 @@ WaveNumberProp.f = pars.Results.f;
 f = pars.Results.f;
 x = pars.Results.x;
 P = pars.Results.P;
-
+CoVar = pars.Results.CoVar;
+CompCoVar = pars.Results.CompCoVar;
 %PreAllocate
 %Decomposition = zeros(2,length(f));
 
@@ -149,8 +154,7 @@ switch pars.Results.Method
         k = NPortAnalysis.WaveNumber(WaveNumberProp);
         %Loop over the frequency vector, to set up the linear system of
         %eqations
-        for ii = 1:length(f)
-            assignin('base','WaveNumberProp',WaveNumberProp)            
+        for ii = 1:length(f)                       
             for z = 1:length(x)
                 A(z,:) = [exp(-1i.*k.Downstream(ii).*x(z))  exp(1i.*k.Upstream(ii).*x(z))];
             end
@@ -160,7 +164,26 @@ switch pars.Results.Method
         end
         DecompP.Min = Decomposition(1,:);
         DecompP.Plus = Decomposition(2,:);   
-       
+   case 'WLLS'
+        k = NPortAnalysis.WaveNumber(WaveNumberProp);
+        %Loop over the frequency vector, to set up the linear system of
+        %eqations
+        for ii = 1:length(f)                     
+            for z = 1:length(x)
+                A(z,:) = [exp(-1i.*k.Downstream(ii).*x(z))  exp(1i.*k.Upstream(ii).*x(z))];
+            end
+            B = [A , zeros(size(A));
+                 zeros(size(A)), conj(A)];
+            CoVarMatrix_Aug = [squeeze(CoVar(ii,:,:)), squeeze(CompCoVar(ii,:,:)) ;
+                               conj(squeeze(CompCoVar(ii,:,:))), conj(squeeze(CoVar(ii,:,:)))];
+            %Normalizing the augmented covariance matrix               
+            CoVarMatrix_Aug = CoVarMatrix_Aug/norm(CoVarMatrix_Aug);               
+            b_aug = [P(:,ii);conj(P(:,ii))];
+            Decomposition(:,ii) = inv(B'*inv(CoVarMatrix_Aug)*B)*B'*inv(CoVarMatrix_Aug)*b_aug;
+        end
+        DecompP.Min = Decomposition(1,:);
+        DecompP.Plus = Decomposition(2,:);           
+        assignin('base','Decomp',Decomposition);
 end
 if pars.Results.GetOutput
    assignin('base','WaveDecomposition',DecompP);

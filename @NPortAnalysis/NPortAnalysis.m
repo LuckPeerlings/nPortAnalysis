@@ -66,7 +66,6 @@ classdef NPortAnalysis  < matlab.mixin.SetGet
         end
         
         function obj = calculateScatteringMatrix(obj)
-            
             obj.NrPorts = length(fields(obj.Input));
             for ii = 1:obj.NrPorts
                 NrMeas(ii) = length( fields( obj.Input.(['Port',num2str(ii)]) ) );
@@ -95,7 +94,14 @@ classdef NPortAnalysis  < matlab.mixin.SetGet
             % Save each field of the scattering matrix in the ScatNPort.
             
             for ii = 1:length(obj.FreqVec)
+
                 S(:,:,ii) =  H_L(:,:,ii)/H_R(:,:,ii);
+                
+                [msgstr, msgid] = lastwarn;
+                if strcmp(msgid,'MATLAB:illConditionedMatrix')
+                fprintf('Ill conditioned matrix at frequency %f \n',obj.FreqVec(ii))
+                lastwarn('')
+                end
             end
             for ii = 1:size(S,1)
                 for jj = 1:size(S,2)
