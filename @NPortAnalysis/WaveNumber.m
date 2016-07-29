@@ -40,6 +40,8 @@ function [ WaveNumber ] = WaveNumber(varargin)
 pars = inputParser;
 DEFAULT.f = [];                 %Default frequency
 DEFAULT.U =  0;                 %Default air-speed
+DEFAULT.PitotPressure = [];
+DEFAULT.PitotSpeedCorrection = [];
 DEFAULT.GasProp = [];           %Default gas Properties
 DEFAULT.Model.Name = [];  %Default loss model.
 DEFAULT.GetOutput = false;      %Default valie of the GetOutput flag
@@ -47,6 +49,8 @@ DEFAULT.GetOutput = false;      %Default valie of the GetOutput flag
 % The available arguments and their check function
 addParameter(pars,'f',DEFAULT.f)
 addParameter(pars,'U',DEFAULT.U)
+addParameter(pars,'PitotPressure',DEFAULT.PitotPressure)
+addParameter(pars,'PitotSpeedCorrection',DEFAULT.PitotSpeedCorrection)
 addParameter(pars,'GasProp',DEFAULT.GasProp)
 addParameter(pars,'Model',DEFAULT.Model)
 addParameter(pars,'GetOutput',DEFAULT.GetOutput)
@@ -58,9 +62,17 @@ parse(pars,varargin{:});
 %Assigning the parsed arguments to their variables
 Model = pars.Results.Model;
 Prop = AirProperties(pars.Results.GasProp);
+PitotPressure = pars.Results.PitotPressure;
+PitotSpeedCorrection = pars.Results.PitotSpeedCorrection;
 U = pars.Results.U;
 f = pars.Results.f;
 omega = 2.*pi.*f;
+
+if ~isempty(PitotPressure) && U ~= 0
+    error('Conflicting data, pressure and speed both given')
+elseif ~isempty(PitotPressure)
+    U = PitotPressureToVelocity(PitotPressure,PitotSpeedCorrection,Prop);
+end
 
 %Herein are all the models for the wavenumbers, each model can be accessed
 %by setting the right model name, the extra needed parameters are stored in
@@ -81,9 +93,15 @@ switch Model.Name
         K_0 = 1 + ( ( 1-1i )./( S.*sqrt(2) ) ).*( 1 + ( Prop.Gamma-1 )./( sqrt(Prop.Prandtl) ) );
         WaveNumber.Upstream = k .* K_0 ./ (1-K_0.*U./Prop.SpeedOfSound);
         WaveNumber.Downstream = k .* K_0 ./ (1+K_0.*U./Prop.SpeedOfSound);
-% 
-%         WaveNumber.Upstream = 1*real(WaveNumber.Upstream) + 1.0*1i*imag(WaveNumber.Upstream);
-%         WaveNumber.Downstream = 1*real(WaveNumber.Downstream) + 1.0*1i*imag(WaveNumber.Downstream);
+    case 'Weng2016'
+        r = Model.r;
+        k = omega./Prop.SpeedOfSound;
+        S = r.*sqrt(Prop.Density.*omega./Prop.Viscosity);
+        alpha_0 = 1./(S.*sqrt(2)).*(1+(Prop.Gamma-1)./(sqrt(Prop.Prandtl)));
+        M = U./Prop.SpeedOfSound;
+        
+        WaveNumber.Upstream = k.*((1+alpha_0)./(1-M) - 1i*alpha_0./(1-M).^(3/2));
+        WaveNumber.Downstream = k.*((1+alpha_0)./(1+M) - 1i*alpha_0./(1+M).^(3/2));
     case 'ViscTherm2ndOrder'
         %This model is taken from "Damping and Reflection Coefficient
         %Maasurements for an Open Pipe at Low Mach and Low Helmholtz numbers"
@@ -223,5 +241,11 @@ function [alpha_fluid] = FluidLosses(omega,Prop)
 
         alpha_vib = alpha_vib_O + alpha_vib_N;
         alpha_fluid = alpha_cl + alpha_rot+alpha_vib;
+end
+
+function [U] = PitotPressureToVelocity(Pressure,Correction,Prop)
+%Function to calculate the flow speed based on the measuremt pitot pressure
+%and a correction factor based on the flow profile and experimental data
+    U = sqrt(2*Pressure./Prop.Density).*Correction;
 end
     
