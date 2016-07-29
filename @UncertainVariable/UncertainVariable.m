@@ -127,6 +127,8 @@ classdef UncertainVariable < handle
                 obj.Identifier = varargin(4);
             elseif iscell(varargin{4}) && (length(varargin{4}) == 1 || length(varargin{4}) == VecSize)
                 obj.Identifier = varargin(4);
+            elseif isempty(varargin{4})
+                obj.Identifier = '';
             else
                 error('The fourth input is not a string or a cell and/or the length of the cell array is not equal to one of the length of the first dimension of the UV')
             end

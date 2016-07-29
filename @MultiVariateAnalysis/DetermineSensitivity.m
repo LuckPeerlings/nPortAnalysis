@@ -51,7 +51,7 @@ for nn = 1:length(obj.UVInputList)
                 PerturbedValue_Imag = 1i*PERTURBATION;
                 Perturbation = 1i*PERTURBATION;
             end
-            if isempty(obj.UVList{nn}{3})  
+            if isempty(obj.UVInputList(nn).StructPos)  
                 PerturbedInput = obj.BaseInput; %Reset the perturbation added by the real part
                 PerturbedInput{ii}{2} = PerturbedValue_Imag;
             else
