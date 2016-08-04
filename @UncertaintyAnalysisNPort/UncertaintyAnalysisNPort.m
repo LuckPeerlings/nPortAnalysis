@@ -23,6 +23,7 @@ classdef UncertaintyAnalysisNPort < MultiVariateAnalysis
         
         function displayScatMatrix(obj)
             figure;
+            title('Absolute values')
             for ii = 1:obj.ClassHandle.NrPorts
                 for jj = 1:obj.ClassHandle.NrPorts
                     ScatUV = obj.Output.ScatNPort.(['S',num2str(jj),num2str(ii)]);
@@ -51,15 +52,15 @@ classdef UncertaintyAnalysisNPort < MultiVariateAnalysis
                 end
             end
             figure;
+            title('Phase Values')
             for ii = 1:obj.ClassHandle.NrPorts
                 for jj = 1:obj.ClassHandle.NrPorts
                     ScatUV = obj.Output.ScatNPort.(['S',num2str(jj),num2str(ii)]);
                     subplot(obj.ClassHandle.NrPorts,obj.ClassHandle.NrPorts, (ii - 1)*obj.ClassHandle.NrPorts + jj )
                     hold on
-                    plot(obj.ClassHandle.FreqVec, unwrap(angle( ScatUV.Value)) + 2*sqrt(AlignedVar(4,:))./abs( ScatUV.Value),'k-');
-                    plot(obj.ClassHandle.FreqVec, unwrap(angle( ScatUV.Value)),'-');
-                    plot(obj.ClassHandle.FreqVec, unwrap(angle( ScatUV.Value)) - 2*sqrt(AlignedVar(4,:))./abs( ScatUV.Value),'k-');
-                    
+                    plot(obj.ClassHandle.FreqVec, unwrap(angle( ScatUV.Value))*180/pi + 2*sqrt(AlignedVar(4,:))./abs( ScatUV.Value)*180/pi,'k-');
+                    plot(obj.ClassHandle.FreqVec, unwrap(angle( ScatUV.Value))*180/pi,'-');
+                    plot(obj.ClassHandle.FreqVec, unwrap(angle( ScatUV.Value))*180/pi - 2*sqrt(AlignedVar(4,:))./abs( ScatUV.Value)*180/pi,'k-');                   
                     
                 end
             end
