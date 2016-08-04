@@ -7,7 +7,7 @@ clear all
 addpath('../');
 
 % Loading calibration data
-Z_cal  = load('C:\Users\Luck Peerlings\Documents\KTH\Experimental\MeasurementData\2013-00-Calibration\2014-11-18_8Mics.mat');
+Z_cal  = load('.\Data\Calibration\2014-11-18_8Mics.mat');
 
 % MicPositions are taken from the rigid plate measurements, using only
 % those frequencies in the plane wave range.
@@ -20,8 +20,8 @@ x_downstream = -1*[-0.433772413098706;-0.464467905221895;-0.494905999266211;-0.6
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %Loading the data
-    load('C:\Users\Luck Peerlings\Documents\KTH\Experimental\MeasurementData\2014-11_AreaExpansion\NoFlow\Upstream\MeasurementInfo.mat')
-    load('C:\Users\Luck Peerlings\Documents\KTH\Experimental\MeasurementData\2014-11_AreaExpansion\NoFlow\Upstream\ComplexPressures.mat','MeasData');
+    load('.\Data\AreaExpansion\NoFlow\Upstream\MeasurementInfo.mat')
+    load('.\Data\AreaExpansion\NoFlow\Upstream\ComplexPressures.mat','MeasData');
 
 %Applying the calibration of the measured pressures
     Z = MeasData.Z;
@@ -68,8 +68,8 @@ clear Measurement
 clear MeasData
 
 %Loading the data
-    load('C:\Users\Luck Peerlings\Documents\KTH\Experimental\MeasurementData\2014-11_AreaExpansion\NoFlow\Downstream\MeasurementInfo.mat')
-    load('C:\Users\Luck Peerlings\Documents\KTH\Experimental\MeasurementData\2014-11_AreaExpansion\NoFlow\Downstream\ComplexPressures.mat','MeasData');
+    load('.\Data\AreaExpansion\NoFlow\Downstream\MeasurementInfo.mat')
+    load('.\Data\AreaExpansion\NoFlow\Downstream\ComplexPressures.mat','MeasData');
 %Performing the calibration of the measured pressures
     Z = MeasData.Z;
     for i=1:length(Measurement.Mic.Channel)
