@@ -22,13 +22,26 @@ classdef UncertaintyAnalysisNPort < MultiVariateAnalysis
         end
         
         function displayScatMatrix(obj,varargin)
-            if isempty(varargin)
+            pars = inputParser;   %Create a parser object
+            DEFAULT.Strouhal = [];
+            
+            % The available arguments and their check function
+            addParameter(pars,'Strouhal',DEFAULT.Strouhal)
+            
+            %Parsing of the arguments
+            parse(pars,varargin{:});
+            
+            %Assigning the parsed arguments to their variables
+            Strouhal = pars.Results.Strouhal;
+            
+            if isempty(Strouhal)
                 XCoordinate = obj.ClassHandle.FreqVec;
-                XCoordinateLabel = 'Strouhal ka/M';
+                XCoordinateLabel = 'Frequency';
             else
-                XCoordinate = 2*pi*obj.ClassHandle.FreqVec*varargin{1}.L/varargin{1}.U;
+                XCoordinate = 2*pi*obj.ClassHandle.FreqVec*Strouhal.L/Strouhal.U;
                 XCoordinateLabel = 'Strouhal ka/M';
             end
+            
             h_fig_abs = figure;
             FigTitle = annotation(h_fig_abs,'textbox',[0.5-0.1/2 0.9 0.1 0.1]);
             set(FigTitle,'String','Absolute Values')
@@ -74,7 +87,7 @@ classdef UncertaintyAnalysisNPort < MultiVariateAnalysis
                     hold on
                     plot(XCoordinate, unwrap(angle( ScatUV.Value))*180/pi + 2*sqrt(AlignedVar(4,:))./abs( ScatUV.Value)*180/pi,'k-');
                     plot(XCoordinate, unwrap(angle( ScatUV.Value))*180/pi,'-');
-                    plot(XCoordinate, unwrap(angle( ScatUV.Value))*180/pi - 2*sqrt(AlignedVar(4,:))./abs( ScatUV.Value)*180/pi,'k-');                   
+                    plot(XCoordinate, unwrap(angle( ScatUV.Value))*180/pi - 2*sqrt(AlignedVar(4,:))./abs( ScatUV.Value)*180/pi,'k-');
                     xlabel(XCoordinateLabel)
                     ylabel('[Deg]')
                 end
@@ -108,7 +121,7 @@ classdef UncertaintyAnalysisNPort < MultiVariateAnalysis
             end
             
             
-            figure  
+            figure
             cc = 1;
             for ii = 1:obj.ClassHandle.NrPorts
                 for jj = 1:obj.ClassHandle.NrPorts
@@ -131,8 +144,59 @@ classdef UncertaintyAnalysisNPort < MultiVariateAnalysis
                     cc = cc + 1;
                 end
             end
-        end    
+        end
         
+        function exportData_AbsAngle(obj,DataFile)
+            fileID = fopen(DataFile,'w');
+            
+            %Write the headers
+            fprintf(fileID,'f');
+            for ii = 1:obj.ClassHandle.NrPorts
+                for jj = 1:obj.ClassHandle.NrPorts
+                    StringCoeff = ['S',num2str(ii),num2str(jj)];
+                    fprintf(fileID,['\t',StringCoeff,'_abs',...
+                        '\t',StringCoeff,'_angle',...
+                        '\t',StringCoeff,'u_abs',...
+                        '\t',StringCoeff,'u_angle']);
+                end
+            end
+            fprintf(fileID,'\n');
+            
+            %Calculate the variance matrix rotated in the direction of
+            %the mean vector value.
+            %Taken from In-Phase/Quadrature Covariance-Matrix
+            %Representation of the Uncertainty of Vectors and Complex
+            %Numbers, Dylan F. Willians, C.m. Wand and Uwe Arz
+            for ii = 1:obj.ClassHandle.NrPorts
+                for jj = 1:obj.ClassHandle.NrPorts
+                    ScatUV = obj.Output.ScatNPort.(['S',num2str(jj),num2str(ii)]);
+                    if isempty(ScatUV.CorrVar)
+                        TotVar = squeeze(sum(ScatUV.Var,1));
+                    else
+                        TotVar = squeeze(sum(ScatUV.Var,1) + sum(ScatUV.CorrVar,1));
+                    end
+                    for mm = 1:size(TotVar,1)
+                        Theta = angle(ScatUV.Value(1,mm));
+                        R = [cos(-Theta), -sin(-Theta); sin(-Theta), cos(-Theta)];
+                        AlignedUCMatrix = R*reshape(TotVar(mm,:),2,2)*transp(R);
+                        AlignedVar(:,mm) = AlignedUCMatrix(:);
+                    end
+                end
+            end
+            %Writing the information to the file
+            for ff = 1:length(obj.ClassHandle.FreqVec)
+                fprintf(fileID,'%e',obj.ClassHandle.FreqVec(ff));
+                for ii = 1:obj.ClassHandle.NrPorts
+                    for jj = 1:obj.ClassHandle.NrPorts
+                        ScatUV = obj.Output.ScatNPort.(['S',num2str(jj),num2str(ii)]);
+                        Angle = unwrap(angle( ScatUV.Value))*180/pi;
+                        fprintf(fileID,'\t %e \t %e \t %e \t %e',abs(ScatUV.Value(ff)),Angle(ff), 2*sqrt(AlignedVar(1,ff)),2*sqrt(AlignedVar(4,ff))./abs( ScatUV.Value(ff))*180/pi);
+                    end
+                end
+                fprintf(fileID,'\n');
+            end
+            fclose(fileID);
+        end
         function VarianceDistribution_AbsAngle(obj)
             figure
             cc = 1;
@@ -160,7 +224,7 @@ classdef UncertaintyAnalysisNPort < MultiVariateAnalysis
             end
             
             
-            figure  
+            figure
             cc = 1;
             for ii = 1:obj.ClassHandle.NrPorts
                 for jj = 1:obj.ClassHandle.NrPorts
@@ -183,7 +247,7 @@ classdef UncertaintyAnalysisNPort < MultiVariateAnalysis
                     cc = cc + 1;
                 end
             end
-        end    
+        end
     end
     
 end
