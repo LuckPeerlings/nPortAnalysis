@@ -100,8 +100,6 @@ parse(pars,varargin{:});
 [DecompP,res] = Method(pars.Results);
 
 
-
-
 end
 
 function [DecompP,res] = Method(Data)

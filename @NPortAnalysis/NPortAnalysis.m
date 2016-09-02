@@ -74,7 +74,6 @@ classdef NPortAnalysis  < matlab.mixin.SetGet
                 end
             end
             obj.NrMeas = NrMeas;
-            
             for ii = 1:obj.NrPorts
                 for jj = 1:obj.NrMeas   
                     if isfield(obj.Input.(['Port',num2str(ii)]),'Constant')
@@ -82,7 +81,7 @@ classdef NPortAnalysis  < matlab.mixin.SetGet
                     end
                     InputDecomp = obj.Input.(['Port',num2str(ii)]).(['Meas',num2str(jj)]);
                     InputDecomp.f = obj.FreqVec;
-                    P = NPortAnalysis.WaveDecomposition( InputDecomp);
+                    [P,res] = NPortAnalysis.WaveDecomposition( InputDecomp);
                     
                     H_R(ii,jj,:) = P.Plus(:,:); 
                     H_L(ii,jj,:) = P.Min(:,:);  
