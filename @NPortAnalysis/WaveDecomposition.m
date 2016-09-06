@@ -1,4 +1,4 @@
-function [DecompP] = WaveDecomposition(varargin)
+function [DecompP,Residual] = WaveDecomposition(varargin)
 % WAVEDECOMPOSITION Calculation of the Wave Decomposition
 %   WAVEDECOMPOSITION calculates the the downstream and upstream
 %   pressure wave.
@@ -82,6 +82,7 @@ DEFAULT.x = [];
 DEFAULT.GasProp = [];   %Default Gas Properties
 DEFAULT.WaveNumberProp =  [];
 DEFAULT.Method = 'Standard';
+DEFAULT.OptimMethod = 'None';
 DEFAULT.GetOutput = false;
 
 addParameter(pars,'f',DEFAULT.f)
@@ -90,19 +91,106 @@ addParameter(pars,'CoVar',DEFAULT.CoVar)
 addParameter(pars,'CompCoVar',DEFAULT.CompCoVar)
 addParameter(pars,'x',DEFAULT.x)
 addParameter(pars,'Method',DEFAULT.Method)
+addParameter(pars,'OptimMethod',DEFAULT.OptimMethod)
 addParameter(pars,'GasProp',DEFAULT.GasProp)
 addParameter(pars,'WaveNumberProp',DEFAULT.WaveNumberProp)
 addParameter(pars,'GetOutput',DEFAULT.GetOutput)
 
 parse(pars,varargin{:});
+switch pars.Results.OptimMethod
+    case 'None'
+        [DecompP,Residual] = DecompositionMethod(pars.Results);
+    case 'TemperatureOptimization'        
+        %Calculate the residual with the current stating guess, find those
+        %points that have a large deviation w.r.t to the standard
+        %deviation of the data
+        x0 = 0;
+        SelecVec = [];
+        res = ObjectiveFunction_Temperature(x0,pars.Results,SelecVec,false);
+        std_res = sqrt(var(res));
+        SelecVec = res<std_res;
+        
+        %In this case, the real part of the wavenumber will be optimized,
+        %so the residual is as small as possible
+        
+        fun = @(x) sum(ObjectiveFunction_Temperature(x,pars.Results,SelecVec,false));
+        [x] = fminunc(fun,x0);
+        %Using an unconstrained optimizer to find the right temperature.
+        Data = pars.Results;
+        Data.GasProp.t = Data.GasProp.t + x;
+        if abs(x)> 5;
+            warning('The temperature correction is larger than 5 degrees');
+            pause;
+        end
+        fprintf('Temperature correction %f \n',x)
+        fprintf('True temperature %f \n',mean(Data.GasProp.t)+ x)
+        [DecompP,Residual] = DecompositionMethod(Data);        
+   case 'TempFlowOptim'        
+        %Calculate the residual with the current stating guess, find those
+        %points that have a large deviation w.r.t to the standard
+        %deviation of the data
+        x0 = [0,0];
+        SelecVec = [];
+        res = ObjectiveFunction_TemperatureFlow(x0,pars.Results,SelecVec,false);
+        std_res = sqrt(var(res));
+        SelecVec = res<2*std_res;
+        SelecVec(1:10) = 0;
+        SelecVec(end-10:end) = 0;
+        %In this case, the real part of the wavenumber will be optimized,
+        %so the residual is as small as possible
+        fun = @(x) sum(ObjectiveFunction_TemperatureFlow(x,pars.Results,SelecVec,false));
+        
+        %Using an unconstrained optimizer to find the right temperature.
+        x = fminunc(fun,x0);
 
-
-[DecompP,res] = Method(pars.Results);
-
-
+        Data = pars.Results;
+        Data.GasProp.t = Data.GasProp.t+x(1);
+        Data.WaveNumberProp.U  = Data.WaveNumberProp.U+x(2);
+        if abs(x)> 5;
+            warning('The temperature correction is larger than 5 degrees');
+            pause;
+        end
+        fprintf('------\n')
+        fprintf('Amount of points %i out of %i\n',sum(SelecVec),length(SelecVec))
+        fprintf('Temperature correction %f + %f \n',mean(Data.GasProp.t),x(1))
+        fprintf('Velocity correction %f + %f \n',Data.WaveNumberProp.U,x(2))
+        Res = sum(ObjectiveFunction_TemperatureFlow(x,pars.Results,SelecVec,false));
+        Res0 = sum(ObjectiveFunction_TemperatureFlow(x0,pars.Results,SelecVec,false));
+        fprintf('Residual,Start %f, End %f \n',Res0,Res)
+        [DecompP,Residual] = DecompositionMethod(Data);        
+end
 end
 
-function [DecompP,res] = Method(Data)
+function res = ObjectiveFunction_Temperature(x,Data,SelecVec,display)
+    %The wavenumber will optimized by adding
+    Data.GasProp.t = Data.GasProp.t + x;
+    [DecompP,res] = DecompositionMethod(Data);
+    if display
+        figure; plot(res);
+    end
+    if isempty(SelecVec)
+        return
+    else
+        res = res(SelecVec);
+    end
+end
+
+function res = ObjectiveFunction_TemperatureFlow(x,Data,SelecVec,display)
+    %The wavenumber will optimized by adding
+    Data.GasProp.t = Data.GasProp.t + x(1);    
+    Data.WaveNumberProp.U = Data.WaveNumberProp.U + x(2) ;
+    [DecompP,res] = DecompositionMethod(Data);
+    if display
+        figure; plot(res);
+    end
+    if isempty(SelecVec)
+        return
+    else
+        res = res(SelecVec);
+    end
+end
+
+function [DecompP,res] = DecompositionMethod(Data)
 f = Data.f;
 x = Data.x;
 P = Data.P;

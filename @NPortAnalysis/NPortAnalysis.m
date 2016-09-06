@@ -80,8 +80,9 @@ classdef NPortAnalysis  < matlab.mixin.SetGet
                        obj.Input.(['Port',num2str(ii)]).(['Meas',num2str(jj)]) = MergeStructs( obj.Input.(['Port',num2str(ii)]).(['Meas',num2str(jj)]), obj.Input.(['Port',num2str(ii)]).('Constant') );
                     end
                     InputDecomp = obj.Input.(['Port',num2str(ii)]).(['Meas',num2str(jj)]);
-                    InputDecomp.f = obj.FreqVec;
-                    [P,res] = NPortAnalysis.WaveDecomposition( InputDecomp);
+                    InputDecomp.f = obj.FreqVec;                   
+                    
+                    [P] = NPortAnalysis.WaveDecomposition( InputDecomp);
                     
                     H_R(ii,jj,:) = P.Plus(:,:); 
                     H_L(ii,jj,:) = P.Min(:,:);  
@@ -135,7 +136,7 @@ classdef NPortAnalysis  < matlab.mixin.SetGet
     end
     methods (Static)
         WaveDecomposition_chk(varargin)
-        P = WaveDecomposition(varargin)
+        [P] = WaveDecomposition(varargin)
         WaveNumber_chk(varargin)
         k = WaveNumber(varargin)
         ModalMatrix = RectangularModalMatrix(GasProp,WaveNumberProp,Index)
