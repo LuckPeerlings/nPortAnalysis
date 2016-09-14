@@ -82,8 +82,14 @@ classdef NPortAnalysis  < matlab.mixin.SetGet
                     InputDecomp = obj.Input.(['Port',num2str(ii)]).(['Meas',num2str(jj)]);
                     InputDecomp.f = obj.FreqVec;                   
                     
-                    [P] = NPortAnalysis.WaveDecomposition( InputDecomp);
+                    [P,Correction] = NPortAnalysis.WaveDecomposition( InputDecomp);
                     
+                    if ~isempty(Correction)
+                        %If the wave decomposition has an optimization
+                        %procedure, save the correction to the input of the
+                        %object.
+                        obj.Input.(['Port',num2str(ii)]).(['Meas',num2str(jj)]).Corr = Correction;
+                    end
                     H_R(ii,jj,:) = P.Plus(:,:); 
                     H_L(ii,jj,:) = P.Min(:,:);  
                     
@@ -94,9 +100,8 @@ classdef NPortAnalysis  < matlab.mixin.SetGet
             % Save each field of the scattering matrix in the ScatNPort.
             
             for ii = 1:length(obj.FreqVec)
-
                 S(:,:,ii) =  H_L(:,:,ii)/H_R(:,:,ii);
-                
+                % 
                 [msgstr, msgid] = lastwarn;
                 if strcmp(msgid,'MATLAB:illConditionedMatrix')
                 fprintf('Ill conditioned matrix at frequency %f \n',obj.FreqVec(ii))
@@ -136,7 +141,7 @@ classdef NPortAnalysis  < matlab.mixin.SetGet
     end
     methods (Static)
         WaveDecomposition_chk(varargin)
-        [P] = WaveDecomposition(varargin)
+        [P,Correction] = WaveDecomposition(varargin)
         WaveNumber_chk(varargin)
         k = WaveNumber(varargin)
         ModalMatrix = RectangularModalMatrix(GasProp,WaveNumberProp,Index)

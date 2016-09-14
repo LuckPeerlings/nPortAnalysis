@@ -1,4 +1,4 @@
-function [DecompP,Residual] = WaveDecomposition(varargin)
+function [DecompP,Correction] = WaveDecomposition(varargin)
 % WAVEDECOMPOSITION Calculation of the Wave Decomposition
 %   WAVEDECOMPOSITION calculates the the downstream and upstream
 %   pressure wave.
@@ -82,8 +82,10 @@ DEFAULT.x = [];
 DEFAULT.GasProp = [];   %Default Gas Properties
 DEFAULT.WaveNumberProp =  [];
 DEFAULT.Method = 'Standard';
-DEFAULT.OptimMethod = 'None';
+DEFAULT.OptimMethod = 'None'; % The optimization method that has to be used.
 DEFAULT.GetOutput = false;
+DEFAULT.Correction = []; %See if the correction has been calculated, if so don't 
+                   %apply the optimization scheme but use the correction directly.
 
 addParameter(pars,'f',DEFAULT.f)
 addParameter(pars,'P',DEFAULT.P)
@@ -95,69 +97,93 @@ addParameter(pars,'OptimMethod',DEFAULT.OptimMethod)
 addParameter(pars,'GasProp',DEFAULT.GasProp)
 addParameter(pars,'WaveNumberProp',DEFAULT.WaveNumberProp)
 addParameter(pars,'GetOutput',DEFAULT.GetOutput)
+addParameter(pars,'Correction',DEFAULT.Correction)
 
 parse(pars,varargin{:});
-switch pars.Results.OptimMethod
+
+%The pars.Results is read only, save it to a writable variable
+
+FunctionInput = pars.Results;
+%If the correction is non empty, apply the correction and skip the
+%optimization
+if ~isempty(FunctionInput.Correction)
+    warning('The optimization method will not be used, reverting the previous determined corrections')
+    switch FunctionInput.OptimMethod    
+        case 'TemperatureOptimization'
+            FunctionInput.GasProp.t = FunctionInput.GasProp.t + Corr.T;
+        case 'TempFlowOptim'
+            FunctionInput.GasProp.t = FunctionInput.GasProp.t+ Corr.T;
+            FunctionInput.WaveNumberProp.U = FunctionInput.WaveNumberProp.U + Corr.U;
+        otherwise
+            error('Correction for this optimization procedure not defined')
+    end
+    FunctionInput.OptimMethod = 'None';
+end
+    
+
+switch FunctionInput.OptimMethod
     case 'None'
-        [DecompP,Residual] = DecompositionMethod(pars.Results);
+        [DecompP,Residual] = DecompositionMethod(FunctionInput);
+        Correction = [];
     case 'TemperatureOptimization'        
         %Calculate the residual with the current stating guess, find those
         %points that have a large deviation w.r.t to the standard
         %deviation of the data
         x0 = 0;
         SelecVec = [];
-        res = ObjectiveFunction_Temperature(x0,pars.Results,SelecVec,false);
+        res = ObjectiveFunction_Temperature(x0,FunctionInput,SelecVec,false);
         std_res = sqrt(var(res));
         SelecVec = res<std_res;
         
         %In this case, the real part of the wavenumber will be optimized,
         %so the residual is as small as possible
         
-        fun = @(x) sum(ObjectiveFunction_Temperature(x,pars.Results,SelecVec,false));
+        fun = @(x) sum(ObjectiveFunction_Temperature(x,FunctionInput,SelecVec,false));
         [x] = fminunc(fun,x0);
         %Using an unconstrained optimizer to find the right temperature.
-        Data = pars.Results;
-        Data.GasProp.t = Data.GasProp.t + x;
+        FunctionInput.GasProp.t = FunctionInput.GasProp.t + x;
         if abs(x)> 5;
             warning('The temperature correction is larger than 5 degrees');
             pause;
         end
         fprintf('Temperature correction %f \n',x)
-        fprintf('True temperature %f \n',mean(Data.GasProp.t)+ x)
-        [DecompP,Residual] = DecompositionMethod(Data);        
+        fprintf('True temperature %f \n',mean(FunctionInput.GasProp.t)+ x)
+        [DecompP,Residual] = DecompositionMethod(FunctionInput);     
+        Correction.T = x;
    case 'TempFlowOptim'        
         %Calculate the residual with the current stating guess, find those
         %points that have a large deviation w.r.t to the standard
         %deviation of the data
         x0 = [0,0];
         SelecVec = [];
-        res = ObjectiveFunction_TemperatureFlow(x0,pars.Results,SelecVec,false);
+        res = ObjectiveFunction_TemperatureFlow(x0,FunctionInput,SelecVec,false);
         std_res = sqrt(var(res));
         SelecVec = res<2*std_res;
         SelecVec(1:10) = 0;
         SelecVec(end-10:end) = 0;
         %In this case, the real part of the wavenumber will be optimized,
         %so the residual is as small as possible
-        fun = @(x) sum(ObjectiveFunction_TemperatureFlow(x,pars.Results,SelecVec,false));
+        fun = @(x) sum(ObjectiveFunction_TemperatureFlow(x,FunctionInput,SelecVec,false));
         
         %Using an unconstrained optimizer to find the right temperature.
         x = fminunc(fun,x0);
 
-        Data = pars.Results;
-        Data.GasProp.t = Data.GasProp.t+x(1);
-        Data.WaveNumberProp.U  = Data.WaveNumberProp.U+x(2);
+        FunctionInput.GasProp.t = FunctionInput.GasProp.t+x(1);
+        FunctionInput.WaveNumberProp.U  = FunctionInput.WaveNumberProp.U+x(2);
         if abs(x)> 5;
             warning('The temperature correction is larger than 5 degrees');
             pause;
         end
         fprintf('------\n')
         fprintf('Amount of points %i out of %i\n',sum(SelecVec),length(SelecVec))
-        fprintf('Temperature correction %f + %f \n',mean(Data.GasProp.t),x(1))
-        fprintf('Velocity correction %f + %f \n',Data.WaveNumberProp.U,x(2))
-        Res = sum(ObjectiveFunction_TemperatureFlow(x,pars.Results,SelecVec,false));
-        Res0 = sum(ObjectiveFunction_TemperatureFlow(x0,pars.Results,SelecVec,false));
+        fprintf('Temperature correction %f + %f \n',mean(FunctionInput.GasProp.t),x(1))
+        fprintf('Velocity correction %f + %f \n',FunctionInput.WaveNumberProp.U,x(2))
+        Res = sum(ObjectiveFunction_TemperatureFlow(x,FunctionInput,SelecVec,false));
+        Res0 = sum(ObjectiveFunction_TemperatureFlow(x0,FunctionInput,SelecVec,false));
         fprintf('Residual,Start %f, End %f \n',Res0,Res)
-        [DecompP,Residual] = DecompositionMethod(Data);        
+        [DecompP,Residual] = DecompositionMethod(FunctionInput);        
+        Correction.T = x(1);
+        Correction.U = x(2);
 end
 end
 
@@ -236,38 +262,6 @@ switch Data.Method
             DecompP.Min(1:length(Decomposition{ii})/2,ii) = Decomposition{ii}(1:end/2);
             DecompP.Plus(1:length(Decomposition{ii})/2,ii) = Decomposition{ii}(end/2+1:end);
         end
-    case 'Standard_withCorr'
-        corr = -3.4074e-06*f - 9.8368e-05 + ...
-        1i*(2.1661e-06*f - 0.0037921);
-        k = NPortAnalysis.WaveNumber(WaveNumberProp);
-        %Loop over the frequency vector, to set up the linear system of
-        %eqations
-        for ii = 1:length(f)
-            for z = 1:length(x)
-                A(z,:) = [exp(-1i.*k.Downstream(ii).*x(z))*(1-corr(ii))  exp(1i.*k.Upstream(ii).*x(z))*(1+corr(ii))];
-            end
-            b = P(:,ii);            
-            %And solve either the determined or the over determined system
-            Decomposition(:,ii) = (A'*A)\(A'*b);
-            res(ii) = transp(A*Decomposition(:,ii)-b)*(conj(A*Decomposition(:,ii)-b));
-        end
-        DecompP.Min = Decomposition(1,:);
-        DecompP.Plus = Decomposition(2,:);
-    case 'Standard_withVelocity'
-        k = NPortAnalysis.WaveNumber(WaveNumberProp);
-        %Loop over the frequency vector, to set up the linear system of
-        %eqations
-        for ii = 1:length(f)
-            for z = 1:length(x)
-                A(z,:) = [exp(-1i.*k.Downstream(ii).*x(z))  exp(1i.*k.Upstream(ii).*x(z)) exp(-1i.*k.Downstream(ii).*x(z))-exp(1i.*k.Upstream(ii).*x(z))];
-            end
-            b = P(:,ii);            
-            %And solve either the determined or the over determined system
-            Decomposition(:,ii) = pinv(A)*b;
-            res(ii) = transp(A*Decomposition(:,ii)-b)*(conj(A*Decomposition(:,ii)-b));
-        end
-        DecompP.Min = Decomposition(1,:);
-        DecompP.Plus = Decomposition(2,:);
     case 'Standard'
         k = NPortAnalysis.WaveNumber(WaveNumberProp);
         %Loop over the frequency vector, to set up the linear system of
@@ -299,6 +293,7 @@ switch Data.Method
             CoVarMatrix_Aug = CoVarMatrix_Aug/norm(CoVarMatrix_Aug);
             b_aug = [P(:,ii);conj(P(:,ii))];
             Decomposition(:,ii) = inv(B'*inv(CoVarMatrix_Aug)*B)*B'*inv(CoVarMatrix_Aug)*b_aug;
+            res(ii) = transp(B*Decomposition(:,ii)-b_aug)*conj(B*Decomposition(:,ii)-b_aug);
             
         end
         DecompP.Min = Decomposition(1,:);
