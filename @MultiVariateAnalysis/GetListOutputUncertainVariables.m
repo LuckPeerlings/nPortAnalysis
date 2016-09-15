@@ -17,10 +17,8 @@ end
 
 
 obj.BaseInput = BaseInput;
-
-%Determine the BaseOutput
-
 BaseOutput = UpdateSolution(obj,BaseInput);
+
 if isempty(BaseOutput)
    error('BaseOutput is empty, correct class implementation?') 
 end

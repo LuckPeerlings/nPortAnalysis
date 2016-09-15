@@ -9,6 +9,7 @@ function obj = GetListInputUncertainVariables(obj)
 
 UVList = [];
 nn = 1;
+
 for ii = 1:length(obj.Input)
     if ~isstruct(obj.Input{ii}{2})
         if strcmp(class(obj.Input{ii}{2}),'UncertainVariable')
@@ -19,6 +20,7 @@ for ii = 1:length(obj.Input)
         end
     else
         UVPos = MultiVariateAnalysis.FindObjectInStructure(obj.Input{ii}{2},'UncertainVariable');
+        assignin('base','UVPos',UVPos)
         for jj = 1:length(UVPos)
             UVList(nn).UV = getfield(obj.Input{ii}{2},UVPos{jj}{:});
             UVList(nn).Pos = ii;

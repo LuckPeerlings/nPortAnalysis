@@ -104,6 +104,7 @@ parse(pars,varargin{:});
 %The pars.Results is read only, save it to a writable variable
 
 FunctionInput = pars.Results;
+
 %If the correction is non empty, apply the correction and skip the
 %optimization
 if ~isempty(FunctionInput.Correction)
@@ -226,6 +227,7 @@ WaveNumberProp = Data.WaveNumberProp;
 GasProp = Data.GasProp;
 WaveNumberProp.GasProp = Data.GasProp;
 WaveNumberProp.f = Data.f;
+
 res = [];
 switch Data.Method
     case 'Circular'

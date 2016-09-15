@@ -68,6 +68,7 @@ U = pars.Results.U;
 f = pars.Results.f;
 omega = 2.*pi.*f;
 
+
 if ~isempty(PitotPressure) && U ~= 0
     error('Conflicting data, pressure and speed both given')
 elseif ~isempty(PitotPressure)

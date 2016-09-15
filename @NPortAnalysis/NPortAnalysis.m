@@ -67,22 +67,26 @@ classdef NPortAnalysis  < matlab.mixin.SetGet
         
         function obj = calculateScatteringMatrix(obj)
             obj.NrPorts = length(fields(obj.Input));
+            %Check how many measurements there are, if there is a field
+            %called constant, do not take this as a measurement
             for ii = 1:obj.NrPorts
                 NrMeas(ii) = length( fields( obj.Input.(['Port',num2str(ii)]) ) );
                 if isfield(obj.Input.(['Port',num2str(ii)]),'Constant')
                     NrMeas(ii) = NrMeas(ii)-1;
                 end
             end
-            obj.NrMeas = NrMeas;
+            assignin('base','Input',obj.Input)
             for ii = 1:obj.NrPorts
-                for jj = 1:obj.NrMeas   
+                for jj = 1:obj.NrMeas 
                     if isfield(obj.Input.(['Port',num2str(ii)]),'Constant')
-                       obj.Input.(['Port',num2str(ii)]).(['Meas',num2str(jj)]) = MergeStructs( obj.Input.(['Port',num2str(ii)]).(['Meas',num2str(jj)]), obj.Input.(['Port',num2str(ii)]).('Constant') );
+                       InputDecomp = MergeStructs( obj.Input.(['Port',num2str(ii)]).(['Meas',num2str(jj)]), obj.Input.(['Port',num2str(ii)]).('Constant') );
+                    else
+                        InputDecomp = obj.Input.(['Port',num2str(ii)]).(['Meas',num2str(jj)]);
                     end
-                    InputDecomp = obj.Input.(['Port',num2str(ii)]).(['Meas',num2str(jj)]);
+%             assignin('base','InputDecomp',InputDecomp)
                     InputDecomp.f = obj.FreqVec;                   
-                    
                     [P,Correction] = NPortAnalysis.WaveDecomposition( InputDecomp);
+                    
                     
                     if ~isempty(Correction)
                         %If the wave decomposition has an optimization
@@ -95,13 +99,11 @@ classdef NPortAnalysis  < matlab.mixin.SetGet
                     
                 end
             end
-            assignin('base','H_R',H_R)
-            assignin('base','H_L',H_L)
             % Save each field of the scattering matrix in the ScatNPort.
             
             for ii = 1:length(obj.FreqVec)
                 S(:,:,ii) =  H_L(:,:,ii)/H_R(:,:,ii);
-                % 
+                
                 [msgstr, msgid] = lastwarn;
                 if strcmp(msgid,'MATLAB:illConditionedMatrix')
                 fprintf('Ill conditioned matrix at frequency %f \n',obj.FreqVec(ii))
