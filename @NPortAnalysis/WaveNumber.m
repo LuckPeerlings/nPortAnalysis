@@ -97,12 +97,13 @@ switch Model.Name
     case 'Weng2016'
         r = Model.r;
         k = omega./Prop.SpeedOfSound;
-        S = r.*sqrt(Prop.Density.*omega./Prop.Viscosity);
-        alpha_0 = 1./(S.*sqrt(2)).*(1+(Prop.Gamma-1)./(sqrt(Prop.Prandtl)));
+        Sh = r.*sqrt(Prop.Density.*omega./Prop.Viscosity);
+        alpha_0 = 1./(Sh.*sqrt(2)).*(1+(Prop.Gamma-1)./(sqrt(Prop.Prandtl)));
+        alpha_2nd = 1./Sh.^2 .* (1+(Prop.Gamma-1)./sqrt(Prop.Prandtl)-0.5.*Prop.Gamma.*(Prop.Gamma-1)./sqrt(Prop.Prandtl));
         M = U./Prop.SpeedOfSound;
-        
-        WaveNumber.Upstream = k.*((1+alpha_0)./(1-M) - 1i*alpha_0./(1-M).^(3/2));
-        WaveNumber.Downstream = k.*((1+alpha_0)./(1+M) - 1i*alpha_0./(1+M).^(3/2));
+        [alpha_fluid] = FluidLosses(omega,Prop);
+        WaveNumber.Upstream = k.*((1+alpha_0)./(1-M) - 1i*(alpha_0+alpha_2nd)./(1-M).^(3/2)) - 1i*alpha_fluid;
+        WaveNumber.Downstream = k.*((1+alpha_0)./(1+M) - 1i*(alpha_0+alpha_2nd)./(1+M).^(3/2))- 1i*alpha_fluid;
     case 'ViscTherm2ndOrder'
         %This model is taken from "Damping and Reflection Coefficient
         %Maasurements for an Open Pipe at Low Mach and Low Helmholtz numbers"

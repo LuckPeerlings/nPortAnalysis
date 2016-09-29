@@ -83,7 +83,6 @@ classdef NPortAnalysis  < matlab.mixin.SetGet
                     else
                         InputDecomp = obj.Input.(['Port',num2str(ii)]).(['Meas',num2str(jj)]);
                     end
-%             assignin('base','InputDecomp',InputDecomp)
                     InputDecomp.f = obj.FreqVec;                   
                     [P,Correction] = NPortAnalysis.WaveDecomposition( InputDecomp);
                     

@@ -127,15 +127,14 @@ switch FunctionInput.OptimMethod
         [DecompP,Residual] = DecompositionMethod(FunctionInput);
         Correction = [];
     case 'TemperatureOptimization'        
-        %Calculate the residual with the current stating guess, find those
+        %Calculate the residual with the current starting guess, find those
         %points that have a large deviation w.r.t to the standard
-        %deviation of the data
+        %deviation of the data and don't use that data for the optimization
         x0 = 0;
         SelecVec = [];
         res = ObjectiveFunction_Temperature(x0,FunctionInput,SelecVec,false);
         std_res = sqrt(var(res));
-        SelecVec = res<std_res;
-        
+        SelecVec = res<std_res;        
         %In this case, the real part of the wavenumber will be optimized,
         %so the residual is as small as possible
         
@@ -169,8 +168,7 @@ switch FunctionInput.OptimMethod
         %Using an unconstrained optimizer to find the right temperature.
         x = fminunc(fun,x0);
 
-        FunctionInput.GasProp.t = FunctionInput.GasProp.t+x(1);
-        FunctionInput.WaveNumberProp.U  = FunctionInput.WaveNumberProp.U+x(2);
+
         if abs(x)> 5;
             warning('The temperature correction is larger than 5 degrees');
             pause;
@@ -182,6 +180,8 @@ switch FunctionInput.OptimMethod
         Res = sum(ObjectiveFunction_TemperatureFlow(x,FunctionInput,SelecVec,false));
         Res0 = sum(ObjectiveFunction_TemperatureFlow(x0,FunctionInput,SelecVec,false));
         fprintf('Residual,Start %f, End %f \n',Res0,Res)
+        FunctionInput.GasProp.t = FunctionInput.GasProp.t+x(1);
+        FunctionInput.WaveNumberProp.U  = FunctionInput.WaveNumberProp.U+x(2);
         [DecompP,Residual] = DecompositionMethod(FunctionInput);        
         Correction.T = x(1);
         Correction.U = x(2);
@@ -193,7 +193,7 @@ function res = ObjectiveFunction_Temperature(x,Data,SelecVec,display)
     Data.GasProp.t = Data.GasProp.t + x;
     [DecompP,res] = DecompositionMethod(Data);
     if display
-        figure; plot(res);
+        figure; plot(res,'x'); hold all; plot(res(SelecVec),'o')
     end
     if isempty(SelecVec)
         return
