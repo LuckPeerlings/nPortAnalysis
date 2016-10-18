@@ -12,7 +12,6 @@ classdef AreaExpansionModel  < matlab.mixin.SetGet
     end
     methods
         function obj = CalculateScatteringMatrix(obj)
-        
         AirProp.t = obj.Temperature;
         AirProp.RH = obj.Humidity;
         AirProp.p = obj.AmbientPressure;

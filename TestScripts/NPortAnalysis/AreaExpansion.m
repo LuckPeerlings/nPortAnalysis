@@ -1,7 +1,6 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Script to calculate the scattering matrix
-
-%close all
+close all
 clear all
 addpath('../../');
 addpath('../../Methods');
@@ -31,27 +30,31 @@ x_downstream = -1*[-0.433772413098706;-0.464467905221895;-0.494905999266211;-0.6
     Z = Z(:,Measurement.Mic.Channel)./ C_fitted(:,Measurement.Mic.Channel);
     
 % Setting the information for the wave decomposition
-    
-   
     Input.Port1.Constant.GasProp.Xc = 390e-9;
     Input.Port1.Constant.GasProp.GasName = 'Air';
     Input.Port1.Constant.WaveNumberProp.Model.Name = 'FluidLosses';
     Input.Port1.Constant.Method = 'Standard'; 
-    Input.Port1.Constant.x = UncertainVariable(x_upstream,(x_upstream*1e-3).^2,[0;0;0;0]);
-    Input.Port1.Constant.WaveNumberProp.Model.r = UncertainVariable(25e-3,(25e-3/100).^2,0); 
-
+    Input.Port1.Constant.x =x_upstream;
+    Input.Port1.Constant.WaveNumberProp.Model.r = 25e-3; 
+    Input.Port1.Constant.WaveNumberProp.Model.A = pi*(25e-3)^2; 
+    Input.Port1.Constant.WaveNumberProp.Model.Perim = 2*pi*25e-3;
+    Input.Port1.Constant.WaveNumberProp.U = 0;
     
     Input.Port1.Meas1.GasProp.RH = Measurement.RH;
-    Input.Port1.Meas1.GasProp.p = Measurement.p;    
+    Input.Port1.Meas1.GasProp.p = Measurement.p;
+
+    
     
     Input.Port2.Constant = Input.Port1.Constant;
     Input.Port2.Constant.WaveNumberProp.Model.r = 45e-3; 
     Input.Port2.Constant.WaveNumberProp.Model.A = pi*(45e-3)^2;    
     Input.Port2.Constant.WaveNumberProp.Model.Perim = 2*pi*45e-3;
-    Input.Port2.Constant.x = UncertainVariable(x_downstream,(x_downstream*1e-3).^2,[0;0;0;0]);
+    Input.Port2.Constant.x = x_downstream;
+    Input.Port2.Constant.WaveNumberProp.U = 0;
     
     Input.Port2.Meas1.GasProp.RH = Measurement.RH;
-    Input.Port2.Meas1.GasProp.p = Measurement.p;     
+    Input.Port2.Meas1.GasProp.p = Measurement.p;  
+    
     
 % Performing the wave decomposition for the upstream side
     Input.Port1.Meas1.GasProp.t = MeasData.T(:,1).'*100;
@@ -82,7 +85,6 @@ clear MeasData
     
     Input.Port1.Meas2.GasProp.RH = Measurement.RH;
     Input.Port1.Meas2.GasProp.p = Measurement.p;
-    
     Input.Port2.Meas2.GasProp.RH = Measurement.RH;    
     Input.Port2.Meas2.GasProp.p = Measurement.p;
     
@@ -97,33 +99,9 @@ clear MeasData
 % Determining the scattering matrix
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-% oNPort = NPortAnalysis;
-% oNPort.Input = Input;
-% oNPort.FreqVec = MeasData.f;
-% oNPort.checkInput;
-% oNPort.calculateScatteringMatrix;
-% oNPort.displayScatMatrix;
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Set the correlations
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-Input.Port1.Constant.x.setCorrelation(1,'Input',4,[],'Port2.Constant.x')
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-oNPortUncertaintyAnalysis = UncertaintyAnalysisNPort;
-
-oNPortUncertaintyAnalysis.Input{1}{1} = 'Input';
-oNPortUncertaintyAnalysis.Input{1}{2} = Input;
-
-oNPortUncertaintyAnalysis.Input{2}{1} = 'FreqVec';
-oNPortUncertaintyAnalysis.Input{2}{2} = MeasData.f;
-
-oNPortUncertaintyAnalysis.OutputProperties{1} = 'ScatNPort';
-oNPortUncertaintyAnalysis.ClassHandle = NPortAnalysis;
-oNPortUncertaintyAnalysis.MethodHandles = {'checkInput','calculateScatteringMatrix'};
-
-oNPortUncertaintyAnalysis.CalculateUncertainty;
-oNPortUncertaintyAnalysis.displayScatMatrix;
+oNPort = NPortAnalysis;
+oNPort.Input = Input;
+oNPort.FreqVec = MeasData.f;
+oNPort.checkInput;
+oNPort.calculateScatteringMatrix;
+oNPort.displayScatMatrix;

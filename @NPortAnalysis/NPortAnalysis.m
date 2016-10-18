@@ -1,18 +1,18 @@
 classdef NPortAnalysis  < matlab.mixin.SetGet
-    properties 
+    properties
         FreqVec
-        Input 
+        Input
     end
     
-    properties 
-        NrPorts = 2;
-        NrMeas = 2;
+    properties
+        NrPorts = 1;
+        NrMeas = 1;
         InputChecked = true;
         ScatNPort
     end
     methods
         function obj = checkInput(obj)
-            % Function to check if the provided input is correct.            
+            % Function to check if the provided input is correct.
             % First the obtain the number of ports and independent
             % measurements
             NrPorts = length(fields(obj.Input));
@@ -22,7 +22,7 @@ classdef NPortAnalysis  < matlab.mixin.SetGet
                     NrMeas(ii) = NrMeas(ii)-1;
                 end
             end
-                        
+            
             %Check that the number of measurements is equal for all ports
             NrMeas = unique(NrMeas);
             if length(NrMeas) ~= 1
@@ -32,8 +32,8 @@ classdef NPortAnalysis  < matlab.mixin.SetGet
             %And check if there is enough independent measurements
             if  NrPorts > NrMeas
                 error('The number of independent measurements is smaller than the number of ports')
-            end            
-                        
+            end
+            
             %Parse the input through the various check functions
             for ii = 1:length(NrPorts)
                 
@@ -44,17 +44,17 @@ classdef NPortAnalysis  < matlab.mixin.SetGet
                     %If the constant field is present, save the constant
                     %fields in the input data.
                     if isfield(obj.Input.(['Port',num2str(ii)]),'Constant')
-                      obj.Input.(['Port',num2str(ii)]).(['Meas',num2str(jj)]) = MergeStructs( obj.Input.(['Port',num2str(ii)]).(['Meas',num2str(jj)]), obj.Input.(['Port',num2str(ii)]).Constant );
-                                     
+                        obj.Input.(['Port',num2str(ii)]).(['Meas',num2str(jj)]) = MergeStructs( obj.Input.(['Port',num2str(ii)]).(['Meas',num2str(jj)]), obj.Input.(['Port',num2str(ii)]).Constant );
+                        
                     end
-                   
+                    
                     GasProperties_chk(  obj.Input.(['Port',num2str(ii)]).(['Meas',num2str(jj)]).GasProp)
                     obj.WaveNumber_chk( obj.Input.(['Port',num2str(ii)]).(['Meas',num2str(jj)]).WaveNumberProp, ...
-                                        'GasProp',obj.Input.(['Port',num2str(ii)]).(['Meas',num2str(jj)]).GasProp,...
-                                        'f',obj.FreqVec);            
-                    obj.WaveDecomposition_chk( obj.Input.(['Port',num2str(ii)]).(['Meas',num2str(jj)]) ,...                        
-                                              'GasProp',obj.Input.(['Port',num2str(ii)]).(['Meas',num2str(jj)]).GasProp,...
-                                              'f',obj.FreqVec)  
+                        'GasProp',obj.Input.(['Port',num2str(ii)]).(['Meas',num2str(jj)]).GasProp,...
+                        'f',obj.FreqVec);
+                    obj.WaveDecomposition_chk( obj.Input.(['Port',num2str(ii)]).(['Meas',num2str(jj)]) ,...
+                        'GasProp',obj.Input.(['Port',num2str(ii)]).(['Meas',num2str(jj)]).GasProp,...
+                        'f',obj.FreqVec)
                 end
             end
             %Finally save the number of ports, measurements and set the
@@ -64,7 +64,50 @@ classdef NPortAnalysis  < matlab.mixin.SetGet
             obj.InputChecked = true;
             
         end
-        
+        function obj = calculateDissipation(obj)
+            %Obtain the mean value of the flow speed for each port.
+            for ii = 1:obj.NrPorts
+                for jj = 1:obj.NrMeas
+                    if isfield(obj.Input.(['Port',num2str(ii)]),'Constant')
+                        InputDecomp.(['Port',num2str(ii)]).(['Meas',num2str(jj)]) = MergeStructs( obj.Input.(['Port',num2str(ii)]).(['Meas',num2str(jj)]), obj.Input.(['Port',num2str(ii)]).('Constant') );
+                    else
+                        InputDecomp.(['Port',num2str(ii)]).(['Meas',num2str(jj)]) = obj.Input.(['Port',num2str(ii)]).(['Meas',num2str(jj)]);
+                    end
+                end
+            end
+            %Obtain the mean flow velocity for the ports.
+            MachNumberPort = zeros(1,obj.NrPorts);
+            for ii = 1:obj.NrPorts
+                for jj = 1:obj.NrMeas
+                    Properties = GasProperties(InputDecomp.(['Port',num2str(ii)]).(['Meas',num2str(jj)]).GasProp);
+                    %Take the average of the the measured speeds
+                    MachNumberPort(ii) = MachNumberPort(ii) + InputDecomp.(['Port',num2str(ii)]).(['Meas',num2str(jj)]).WaveNumberProp.U/mean(Properties.SpeedOfSound)/obj.NrMeas;
+                end
+                Radius(ii) = InputDecomp.(['Port',num2str(ii)]).Meas1.WaveNumberProp.Model.r;
+            end
+            
+            %Create the matrices to convert the propagating pressure wave to the propagating
+            Mach_Plus = zeros(obj.NrPorts);
+            Mach_Min = zeros(obj.NrPorts);
+            for ii = 1:obj.NrPorts
+                Mach_Plus(ii,ii) = (1+MachNumberPort(ii))*sqrt(pi*Radius(ii)^2);
+                Mach_Min(ii,ii) = (1-MachNumberPort(ii))*sqrt(pi*Radius(ii)^2);
+            end
+            
+            %Reshape the scattering matrix and calculate the scattering matrix
+            %w.r.t to power.
+            for ff = 1:length(obj.FreqVec)
+                for ii = 1:obj.NrPorts
+                    for jj = 1:obj.NrPorts
+                        S(ii,jj) = obj.ScatNPort.(['S',num2str(ii),num2str(jj)])(ff);
+                    end
+                end
+                S_Power = inv(Mach_Min)*S*Mach_Plus;
+                lambda(:,ff) = eig(S_Power'*S_Power);
+                
+            end
+            figure; plot((1-lambda).')
+        end
         function obj = calculateScatteringMatrix(obj)
             obj.NrPorts = length(fields(obj.Input));
             %Check how many measurements there are, if there is a field
@@ -77,13 +120,13 @@ classdef NPortAnalysis  < matlab.mixin.SetGet
             end
             assignin('base','Input',obj.Input)
             for ii = 1:obj.NrPorts
-                for jj = 1:obj.NrMeas 
+                for jj = 1:obj.NrMeas
                     if isfield(obj.Input.(['Port',num2str(ii)]),'Constant')
-                       InputDecomp = MergeStructs( obj.Input.(['Port',num2str(ii)]).(['Meas',num2str(jj)]), obj.Input.(['Port',num2str(ii)]).('Constant') );
+                        InputDecomp = MergeStructs( obj.Input.(['Port',num2str(ii)]).(['Meas',num2str(jj)]), obj.Input.(['Port',num2str(ii)]).('Constant') );
                     else
                         InputDecomp = obj.Input.(['Port',num2str(ii)]).(['Meas',num2str(jj)]);
                     end
-                    InputDecomp.f = obj.FreqVec;                   
+                    InputDecomp.f = obj.FreqVec;
                     [P,Correction] = NPortAnalysis.WaveDecomposition( InputDecomp);
                     
                     
@@ -93,8 +136,8 @@ classdef NPortAnalysis  < matlab.mixin.SetGet
                         %object.
                         obj.Input.(['Port',num2str(ii)]).(['Meas',num2str(jj)]).Corr = Correction;
                     end
-                    H_R(ii,jj,:) = P.Plus(:,:); 
-                    H_L(ii,jj,:) = P.Min(:,:);  
+                    H_R(ii,jj,:) = P.Plus(:,:);
+                    H_L(ii,jj,:) = P.Min(:,:);
                     
                 end
             end
@@ -105,16 +148,16 @@ classdef NPortAnalysis  < matlab.mixin.SetGet
                 
                 [msgstr, msgid] = lastwarn;
                 if strcmp(msgid,'MATLAB:illConditionedMatrix')
-                fprintf('Ill conditioned matrix at frequency %f \n',obj.FreqVec(ii))
-                lastwarn('')
+                    fprintf('Ill conditioned matrix at frequency %f \n',obj.FreqVec(ii))
+                    lastwarn('')
                 end
             end
             for ii = 1:size(S,1)
                 for jj = 1:size(S,2)
                     obj.ScatNPort.(['S',num2str(jj),num2str(ii)]) = reshape(S(ii,jj,:),1,[]);
                 end
-            end          
-       end
+            end
+        end
         
         function displayScatMatrix(obj)
             if ~obj.InputChecked
@@ -129,7 +172,7 @@ classdef NPortAnalysis  < matlab.mixin.SetGet
                     plot(obj.FreqVec, abs( obj.ScatNPort.(['S',num2str(jj),num2str(ii)]) ))
                 end
             end
-            figure;            
+            figure;
             for ii = 1:obj.NrPorts
                 for jj = 1:obj.NrPorts
                     subplot(obj.NrPorts,obj.NrPorts, (ii - 1)*obj.NrPorts + jj )
@@ -137,8 +180,36 @@ classdef NPortAnalysis  < matlab.mixin.SetGet
                 end
             end
         end
+        function exportData_AbsAngle(obj,DataFile)
+            fileID = fopen(DataFile,'w');
+            
+            %Write the headers
+            fprintf(fileID,'f');
+            for ii = 1:obj.NrPorts
+                for jj = 1:obj.NrPorts
+                    StringCoeff = ['S',num2str(ii),num2str(jj)];
+                    fprintf(fileID,['\t',StringCoeff,'_abs',...
+                        '\t',StringCoeff,'_angle']);
+                end
+            end
+            fprintf(fileID,'\n');
             
             
+            %Writing the information to the file
+            for ff = 1:length(obj.FreqVec)
+                fprintf(fileID,'%e',obj.FreqVec(ff));
+                for ii = 1:obj.NrPorts
+                    for jj = 1:obj.NrPorts
+                        ScatElement = obj.ScatNPort.(['S',num2str(jj),num2str(ii)]);
+                        Angle = unwrap(angle(ScatElement))*180/pi;
+                        fprintf(fileID,'\t %e \t %e \t %e \t %e',abs(ScatElement(ff)),Angle(ff));
+                    end
+                end
+                fprintf(fileID,'\n');
+            end
+            fclose(fileID);
+        end
+        
     end
     methods (Static)
         WaveDecomposition_chk(varargin)
@@ -149,7 +220,7 @@ classdef NPortAnalysis  < matlab.mixin.SetGet
         ModalMatrix = CircularModalMatrix(GasProp,WaveNumberProp,Index)
         [Gamma_beatty] = getAlphaFromBeatty1950_Rectangular(ny,nz,sh,He,aspectRatio,Pr,gamma)
         [Gamma_beatty] = getAlphaFromBeatty1950_Circular(m,n,sh,He,Pr,gamma,RootsBesselFunction)
-
+        
     end
-   
+    
 end

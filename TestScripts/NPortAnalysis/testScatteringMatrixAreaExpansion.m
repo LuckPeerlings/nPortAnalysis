@@ -1,15 +1,12 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Script to calculate the scattering matrix
-
-
-%close all
+close all
 clear all
-addpath('../');
+addpath('../../');
+addpath('../../Methods');
 
 % Loading calibration data
 Z_cal  = load('.\Data\Calibration\2014-11-18_8Mics.mat');
-
-
 
 % MicPositions are taken from the rigid plate measurements, using only
 % those frequencies in the plane wave range.
@@ -89,7 +86,6 @@ clear MeasData
     
     Input.Port1.Meas2.GasProp.RH = Measurement.RH;
     Input.Port1.Meas2.GasProp.p = Measurement.p;
-    
     Input.Port2.Meas2.GasProp.RH = Measurement.RH;    
     Input.Port2.Meas2.GasProp.p = Measurement.p;
     
