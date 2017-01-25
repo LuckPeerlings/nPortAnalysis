@@ -10,8 +10,8 @@ function obj = DetermineSensitivity(obj)
 %PROBLEMS
 
 %Values for the perturbations applied
-RELPERTURBATION = 1e-4; %If the input is unequal to zero
-PERTURBATION = 1e-4;    %if the input is equal to zero
+RELPERTURBATION = 1e-6; %If the input is unequal to zero
+PERTURBATION = 1e-6;    %if the input is equal to zero
 
 
 %Routine to calculate the sensitivity of the output variables to each input
@@ -29,9 +29,10 @@ for nn = 1:length(obj.UVInputList)
         PerturbedValue_Real(jj,:) = real(UV.Value(jj,:))*(1+RELPERTURBATION) + ...
                   1i*imag((UV.Value(jj,:)));
         Perturbation = real(UV.Value(jj,:))*(RELPERTURBATION);
-        if PerturbedValue_Real == 0;                    
-            PerturbedValue_Real = PERTURBATION;
+        if PerturbedValue_Real(jj) == 0;                    
+            PerturbedValue_Real(jj) = PERTURBATION;
             Perturbation = PERTURBATION;
+            disp('test')
         end
         if isempty(obj.UVInputList(nn).StructPos)                    
             PerturbedInput{ii}{2} = PerturbedValue_Real;
@@ -47,8 +48,8 @@ for nn = 1:length(obj.UVInputList)
             PerturbedValue_Imag(jj,:) = real(UV.Value(jj,:)) + ...
                                   1i*imag((UV.Value(jj,:)))*(1+RELPERTURBATION);
             Perturbation = RELPERTURBATION*1i*imag(UV.Value(jj,:));
-            if PerturbedValue_Imag == 0;
-                PerturbedValue_Imag = 1i*PERTURBATION;
+            if PerturbedValue_Imag(jj) == 0;
+                PerturbedValue_Imag(jj) = 1i*PERTURBATION;
                 Perturbation = 1i*PERTURBATION;
             end
             if isempty(obj.UVInputList(nn).StructPos)  
