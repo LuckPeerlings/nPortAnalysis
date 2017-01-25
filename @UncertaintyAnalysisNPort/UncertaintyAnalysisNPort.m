@@ -193,7 +193,8 @@ classdef UncertaintyAnalysisNPort < MultiVariateAnalysis
             end
             fclose(fileID);
         end
-        function VarianceDistribution_AbsAngle(obj)
+        
+        function VarianceDistribution_AbsAngle(obj,varargin)
             figure
             cc = 1;
             for ii = 1:obj.ClassHandle.NrPorts
@@ -210,12 +211,58 @@ classdef UncertaintyAnalysisNPort < MultiVariateAnalysis
                         SummedVar(I,:,:) = SummedVar(I,:,:) + ScatUV.AlignedVar(ll,:,:);
                     end
                     RelativeVar = bsxfun(@rdivide,SummedVar(:,:,1),sum(SummedVar(:,:,1),1));
+                    size(RelativeVar)
+                    if ~isempty(varargin)
+                        %Save the values of the relative variances in a
+                        %large matrix. This will be easier to write the
+                        %data to a file then appending each column to the
+                        %file.
+                        RelativeVar_Export(ii,jj,:,:)= RelativeVar;
+                    end
                     area(h1(cc),obj.ClassHandle.FreqVec,RelativeVar.')
                     if ii == 1 && jj == 1
                         legend(UniqueGroupNames)
                         title('Relative Contribution of variance to the magnitude uncertainty (Uncorrelated Errors)')
                     end
                     cc = cc +1;
+                end
+            end
+            if ~isempty(varargin)
+                SAVEDIR = varargin{1};
+                if ~strcmp(SAVEDIR(end),'\') 
+                    SAVEDIR=strcat(SAVEDIR,'\');
+                end
+                for ii = 1:obj.ClassHandle.NrPorts
+                    for jj = 1:obj.ClassHandle.NrPorts
+                        %Write each variance distribuion of the scattering
+                        %coefficients to a file.
+                        fileName = [SAVEDIR,'Variance_Abs_S',num2str(ii),num2str(jj),'.dat'];
+                        fileID = fopen(fileName,'w');
+                        
+                        %Writing header
+                        fprintf(fileID,'f \t');
+                        for kk = 1:length(UniqueGroupNames)
+                            fprintf(fileID,UniqueGroupNames{kk});
+                            if kk ~= length(UniqueGroupNames)
+                                fprintf(fileID,'\t');
+                            else                            
+                                fprintf(fileID,'\n');
+                            end
+                        end
+                        %Writing columns to the file 
+                        for ff = 1:size(RelativeVar_Export,4)
+                            fprintf(fileID,'%e \t',obj.ClassHandle.FreqVec(ff));
+                            for kk = 1:size(RelativeVar_Export,3)                                
+                                fprintf(fileID,'%e',RelativeVar_Export(ii,jj,kk,ff));
+                                if kk ~= size(RelativeVar_Export,3)
+                                fprintf(fileID,'\t');
+                                else
+                                fprintf(fileID,'\n');
+                                end
+                            end
+                        end
+                        fclose(fileID);
+                    end
                 end
             end
             
@@ -235,12 +282,57 @@ classdef UncertaintyAnalysisNPort < MultiVariateAnalysis
                         SummedVar(I,:,:) = SummedVar(I,:,:) + ScatUV.AlignedVar(ll,:,:);
                     end
                     RelativeVar = bsxfun(@rdivide,SummedVar(:,:,4),sum(SummedVar(:,:,4),1));
+                    if ~isempty(varargin)
+                        %Save the values of the relative variances in a
+                        %large matrix. This will be easier to write the
+                        %data to a file then appending each column to the
+                        %file.
+                        RelativeVar_Export(ii,jj,:,:)= RelativeVar;
+                    end
                     area(h2(cc), obj.ClassHandle.FreqVec,RelativeVar.')
                     if ii == 1 && jj == 1
                         legend(UniqueGroupNames)
                         title('Relative Contribution of variance to the phase uncertainty (Uncorrelated Errors)')
                     end
                     cc = cc + 1;
+                end
+            end
+            if ~isempty(varargin)
+                SAVEDIR = varargin{1};
+                if ~strcmp(SAVEDIR(end),'\') 
+                    SAVEDIR=strcat(SAVEDIR,'\');
+                end
+                for ii = 1:obj.ClassHandle.NrPorts
+                    for jj = 1:obj.ClassHandle.NrPorts
+                        %Write each variance distribuion of the scattering
+                        %coefficients to a file.
+                        fileName = [SAVEDIR,'Variance_Angle_S',num2str(ii),num2str(jj),'.dat'];
+                        fileID = fopen(fileName,'w');
+                        
+                        %Writing header
+                        fprintf(fileID,'f \t');
+                        for kk = 1:length(UniqueGroupNames)
+                            fprintf(fileID,UniqueGroupNames{kk});
+                            if kk ~= length(UniqueGroupNames)
+                                fprintf(fileID,'\t');
+                            else                            
+                                fprintf(fileID,'\n');
+                            end
+                        end
+                        %Writing columns to the file 
+                        for ff = 1:size(RelativeVar_Export,4)
+                            fprintf(fileID,'%e \t',obj.ClassHandle.FreqVec(ff));
+                            for kk = 1:size(RelativeVar_Export,3)                                
+                                fprintf(fileID,'%e',RelativeVar_Export(ii,jj,kk,ff));
+                                if kk ~= size(RelativeVar_Export,3)
+                                fprintf(fileID,'\t');
+                                else
+                                fprintf(fileID,'\n');
+                                end
+                            end
+                        end
+                        fclose(fileID);
+                    end
                 end
             end
         end
