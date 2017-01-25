@@ -1,6 +1,6 @@
 classdef AreaExpansionModel  < matlab.mixin.SetGet
-
-    properties 
+    
+    properties
         FreqVec
         RadiusUpstream
         RadiusDownstream
@@ -12,27 +12,27 @@ classdef AreaExpansionModel  < matlab.mixin.SetGet
     end
     methods
         function obj = CalculateScatteringMatrix(obj)
-        AirProp.t = obj.Temperature;
-        AirProp.RH = obj.Humidity;
-        AirProp.p = obj.AmbientPressure;
-        
-        Prop = AirProperties(AirProp);
-        switch obj.ModelName
-            case 'Kergomard'
-            Zj = GetImpedanceKergoMard(obj,2*pi*obj.FreqVec,Prop);
-            case 'Auregan'
-            Zj = GetImpedanceAuregain(obj,2*pi*obj.FreqVec,Prop);                   
-        end
-        
-        mu = (obj.RadiusUpstream/obj.RadiusDownstream).^2;
-        Sa = pi*(obj.RadiusUpstream)^2;
-        
-        % Using the equation 7-3.5 pag 330 of "Acoustics: An Introduction to Its
-        % Physical Principels and Applications, Allan D. Pierce
-        obj.ScatMatrix.S11 = 1./(mu + 1 + Sa/(Prop.Density*Prop.SpeedOfSound)*Zj) .* (mu - 1 + Sa/(Prop.Density*Prop.SpeedOfSound)*Zj);
-        obj.ScatMatrix.S12 = 1./(mu + 1 + Sa/(Prop.Density*Prop.SpeedOfSound)*Zj ) .* 2;
-        obj.ScatMatrix.S21 = 1./(mu + 1 + Sa/(Prop.Density*Prop.SpeedOfSound)*Zj ) .* (2.*mu );
-        obj.ScatMatrix.S22 = 1./(mu + 1 + Sa/(Prop.Density*Prop.SpeedOfSound)*Zj ) .* (1 - mu + Sa/(Prop.Density*Prop.SpeedOfSound)*Zj);
+            AirProp.t = obj.Temperature;
+            AirProp.RH = obj.Humidity;
+            AirProp.p = obj.AmbientPressure;
+            
+            Prop = AirProperties(AirProp);
+            switch obj.ModelName
+                case 'Kergomard'
+                    Zj = GetImpedanceKergoMard(obj,2*pi*obj.FreqVec,Prop);
+                case 'Auregan'
+                    Zj = GetImpedanceAuregain(obj,2*pi*obj.FreqVec,Prop);
+            end
+            
+            mu = (obj.RadiusUpstream/obj.RadiusDownstream).^2;
+            Sa = pi*(obj.RadiusUpstream)^2;
+            
+            % Using the equation 7-3.5 pag 330 of "Acoustics: An Introduction to Its
+            % Physical Principels and Applications, Allan D. Pierce
+            obj.ScatMatrix.S11 = 1./(mu + 1 + Sa/(Prop.Density*Prop.SpeedOfSound)*Zj) .* (mu - 1 + Sa/(Prop.Density*Prop.SpeedOfSound)*Zj);
+            obj.ScatMatrix.S12 = 1./(mu + 1 + Sa/(Prop.Density*Prop.SpeedOfSound)*Zj ) .* 2;
+            obj.ScatMatrix.S21 = 1./(mu + 1 + Sa/(Prop.Density*Prop.SpeedOfSound)*Zj ) .* (2.*mu );
+            obj.ScatMatrix.S22 = 1./(mu + 1 + Sa/(Prop.Density*Prop.SpeedOfSound)*Zj ) .* (1 - mu + Sa/(Prop.Density*Prop.SpeedOfSound)*Zj);
         end
         
         function Zj = GetImpedanceKergoMard(obj,omega,Prop)
@@ -50,13 +50,13 @@ classdef AreaExpansionModel  < matlab.mixin.SetGet
             k_c = 3.831706./obj.RadiusDownstream;
             Q = 1./(sqrt(1-((omega./Prop.SpeedOfSound)./k_c).^2)) - 1;
             
-            Zj = (1i.*omega).*(L0 + alpha.*Prop.Density./obj.RadiusUpstream.*A.*Q + alpha.*Prop.Density./obj.RadiusUpstream.*B.*Q.^2) ;                     
+            Zj = (1i.*omega).*(L0 + alpha.*Prop.Density./obj.RadiusUpstream.*A.*Q + alpha.*Prop.Density./obj.RadiusUpstream.*B.*Q.^2) ;
         end
         
         function Zj = GetImpedanceAuregain(obj,omega,Prop)
             Sa = pi*obj.RadiusUpstream^2 ;
             alpha = obj.RadiusUpstream/obj.RadiusDownstream;
-          
+            
             f_alpha = ( (1-alpha)*(3+alpha) )/( 3*(1+alpha)^2);
             gamma = 2 / (alpha^2*(1-alpha^2)*(0.25+f_alpha));
             k2 = ((omega/Prop.SpeedOfSound).^2 - (gamma/obj.RadiusDownstream.^2)).^(0.5);
@@ -65,20 +65,51 @@ classdef AreaExpansionModel  < matlab.mixin.SetGet
         end
         
         function displayScatMatrix(obj)
-            figure;            
+            figure;
             for ii = 1:2
                 for jj = 1:2
                     subplot(2,2, (ii - 1)*2 + jj )
                     plot(obj.FreqVec, abs( obj.ScatMatrix.(['S',num2str(jj),num2str(ii)]) ))
                 end
             end
-            figure;            
+            figure;
             for ii = 1:2
                 for jj = 1:2
                     subplot(2,2, (ii - 1)*2 + jj )
                     plot(obj.FreqVec, unwrap(angle( obj.ScatMatrix.(['S',num2str(jj),num2str(ii)]) ))*180/pi)
                 end
             end
+        end
+        
+        function displayEnergyDissipation(obj)
+            Radius(1) = obj.RadiusUpstream;
+            Radius(2) = obj.RadiusDownstream;
+            
+            for ii = 1:2
+                Energy_Plus(ii,ii) = sqrt(pi*Radius(ii)^2);
+                Energy_Min(ii,ii) = sqrt(pi*Radius(ii)^2);
+            end
+            for ff = 1:length(obj.FreqVec)                
+                for ii = 1:2
+                    for jj = 1:2
+                        S(ii,jj) = obj.ScatMatrix.(['S',num2str(ii),num2str(jj)])(ff);
+                    end
+                end
+                S_Power(ff,:,:) = Energy_Min*S*inv(Energy_Plus);
+            end                        
+            
+            S_diss = zeros(length(obj.FreqVec),2);
+            for ff = 1:length(obj.FreqVec)
+                for ii = 1:2
+                    for jj = 1:2
+                        S_diss(ff,ii) = S_diss(ff,ii) + abs(S_Power(ff,jj,ii))^2;
+                    end
+                end
+            end
+            figure;
+            plot(obj.FreqVec,1-S_diss(:,1),'b')
+            hold on
+            plot(obj.FreqVec,1-S_diss(:,2),'r')
         end
     end
 end
