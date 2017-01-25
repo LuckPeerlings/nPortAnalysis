@@ -12,9 +12,8 @@ AreaExpansion.FreqVec = linspace(100,3000,100);
 AreaExpansion.ModelName = 'Kergomard';
 AreaExpansion.CalculateScatteringMatrix
 
+
 AreaExpansion_u = MultiVariateAnalysis;
-
-
 AreaExpansion_u .Input{1}{1} = 'Temperature';
 AreaExpansion_u .Input{1}{2} = UncertainVariable(21,0.1,0);
 

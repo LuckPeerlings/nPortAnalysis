@@ -35,7 +35,7 @@ x_downstream = -1*[-0.433772413098706;-0.464467905221895;-0.494905999266211;-0.6
     Input.Port1.Constant.GasProp.GasName = 'Air';
     Input.Port1.Constant.WaveNumberProp.Model.Name = 'FluidLosses';
     Input.Port1.Constant.Method = 'Standard'; 
-    Input.Port1.Constant.x = UncertainVariable(x_upstream,(x_upstream*1e-4).^2,[0;0;0;0],[],'Position Port 1');
+    Input.Port1.Constant.x = UncertainVariable(x_upstream,(x_upstream*1e-3).^2,[0;0;0;0],[],'Position Port 1');
     Input.Port1.Constant.WaveNumberProp.Model.r = UncertainVariable(25e-3,(25e-3/100).^2,0,[],'Radius Port 1'); 
 
     
@@ -46,7 +46,7 @@ x_downstream = -1*[-0.433772413098706;-0.464467905221895;-0.494905999266211;-0.6
     Input.Port2.Constant.WaveNumberProp.Model.r = 45e-3; 
     Input.Port2.Constant.WaveNumberProp.Model.A = pi*(45e-3)^2;    
     Input.Port2.Constant.WaveNumberProp.Model.Perim = 2*pi*45e-3;
-    Input.Port2.Constant.x = UncertainVariable(x_downstream,(x_downstream*1e-4).^2,[0;0;0;0],[],'Position Port 2');
+    Input.Port2.Constant.x = UncertainVariable(x_downstream,(x_downstream*1e-3).^2,[0;0;0;0],[],'Position Port 2');
     
     Input.Port2.Meas1.GasProp.RH = Measurement.RH;
     Input.Port2.Meas1.GasProp.p = Measurement.p;     
