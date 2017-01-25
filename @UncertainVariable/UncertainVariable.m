@@ -1,6 +1,7 @@
 classdef UncertainVariable < handle
     properties (SetAccess = public)
         Value       %The mean value of the measurand
+        MeanValue   %The mean value obtained from the Monte Carlo
         UCMatrix    %The (co) variance (matrix) for a real or oomplex matrix
         CorrelationMatrix
         CorrVar 
@@ -8,6 +9,7 @@ classdef UncertainVariable < handle
         Identifier  %Identifier of the variable to easily track the component errors 
         Group       = {'Base'}; %Group the uncertain variable belongs to, used to group uncertainties together
         Distribution %Name of the distribution (used in monte carlo simulations)
+        Value_Iteration
     end    
     properties (SetAccess = public)
         %These properties are set internally and can be obtained but not
