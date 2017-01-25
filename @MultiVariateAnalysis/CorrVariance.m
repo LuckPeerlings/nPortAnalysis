@@ -40,12 +40,6 @@ for nn = 1:length(obj.CorrelationInfo)
             %Calculate the correlated uncertainty 
             CorrUCMatrix = SensitivityMatrixVarOne*UCMatrixOne*CorrelationMatrix*transp(SensitivityMatrixVarTwo*UCMatrixTwo);
             %The CorrUCMatrix is not diagonal!
-            if ll == 1 && mm == 1;
-              %disp(UCMatrixOne)
-              disp(SensitivityMatrixVarOne)
-              %disp(UCMatrixTwo)
-              disp(SensitivityMatrixVarTwo)
-            end
             obj.UVOutputList(mm).UV.CorrVar(nn,ll,1:4) = CorrUCMatrix(:);
         end
     
