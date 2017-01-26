@@ -85,13 +85,15 @@ for nn = 1:length(obj.UVOutputList)
     %Determine if the perturbation was real or complex and calculate
     %the appropriate elements of the sensitivity matrix. Saved in
     %columnwise vector
-    Sensitivity = (POSingle-BOSingle)./Perturbation;
+    
     if isreal(Perturbation)
+        Sensitivity = (POSingle-BOSingle)./Perturbation;
         obj.UVOutputList(nn).UV.Sensitivity(Index,:,1) = real(Sensitivity);
         obj.UVOutputList(nn).UV.Sensitivity(Index,:,2) = imag(Sensitivity);
         obj.UVOutputList(nn).UV.Sensitivity(Index,:,3) = 0;
         obj.UVOutputList(nn).UV.Sensitivity(Index,:,4) = 0;
     else
+        Sensitivity = (POSingle-BOSingle)./imag(Perturbation);
         obj.UVOutputList(nn).UV.Sensitivity(Index,:,3) = real(Sensitivity);
         obj.UVOutputList(nn).UV.Sensitivity(Index,:,4) = imag(Sensitivity);
     end
