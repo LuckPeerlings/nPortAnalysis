@@ -9,6 +9,7 @@ classdef NPortAnalysis  < matlab.mixin.SetGet
         NrMeas = 2;
         InputChecked = true;
         ScatNPort
+        DissipationNPort
     end
     methods
         function obj = checkInput(obj)
@@ -81,6 +82,14 @@ classdef NPortAnalysis  < matlab.mixin.SetGet
                     %Take the average of the the measured speeds
                     if isfield(InputDecomp.(['Port',num2str(ii)]).(['Meas',num2str(jj)]).WaveNumberProp,'U')
                         MachNumberPort(ii) = MachNumberPort(ii) + InputDecomp.(['Port',num2str(ii)]).(['Meas',num2str(jj)]).WaveNumberProp.U/mean(Properties.SpeedOfSound)/obj.NrMeas;
+                    else
+                        warning('No velocity data found');
+                    end
+                    %Add velocity correction if necessary
+                    if isfield(InputDecomp.(['Port',num2str(ii)]).(['Meas',num2str(jj)]),'Corr')
+                        if isfield(InputDecomp.(['Port',num2str(ii)]).(['Meas',num2str(jj)]).Corr,'U')
+                            MachNumberPort(ii) = MachNumberPort(ii) + InputDecomp.(['Port',num2str(ii)]).(['Meas',num2str(jj)]).Corr.U/mean(Properties.SpeedOfSound)/obj.NrMeas;
+                        end
                     end
                 end
                 Radius(ii) = InputDecomp.(['Port',num2str(ii)]).Meas1.WaveNumberProp.Model.r;
@@ -90,7 +99,7 @@ classdef NPortAnalysis  < matlab.mixin.SetGet
             Mach_Min = zeros(obj.NrPorts);
             for ii = 1:obj.NrPorts
                 Mach_Plus(ii,ii) = (1-MachNumberPort(ii))*sqrt(pi*Radius(ii)^2);
-                Mach_Min(ii,ii) = (1+MachNumberPort(ii))*sqrt(pi*Radius(ii)^2);
+                Mach_Min(ii,ii) =  (1+MachNumberPort(ii))*sqrt(pi*Radius(ii)^2);
             end
             %Reshape the scattering matrix and calculate the scattering matrix
             %w.r.t to power.
@@ -99,26 +108,25 @@ classdef NPortAnalysis  < matlab.mixin.SetGet
                     for jj = 1:obj.NrPorts
                         S(ii,jj) = obj.ScatNPort.(['S',num2str(ii),num2str(jj)])(ff);
                     end
-                end
-                S_Power(ff,:,:) = Mach_Min*S*inv(Mach_Plus);
+                end                           
+                Sq = Mach_Min*S*inv(Mach_Plus);
+                P_dis(ff,:,:) = eye(2)-transp(conj(Sq))*Sq;
             end
-            S_diss = zeros(length(obj.FreqVec),obj.NrPorts);
-            
-            
+                       
             for ii = 1:obj.NrPorts
-                for jj = 1:obj.NrPorts
-                    S_diss(:,ii) = S_diss(:,ii) + abs(S_Power(:,jj,ii)).^2;
-                end
+                obj.DissipationNPort.(['Port',num2str(ii)]) = squeeze(P_dis(:,ii,ii)).';
             end
             
             %Show the power dissipated per port
+            if ~isempty(varargin) && strcmp(varargin{1},'plot')
             figure;
-            plot(obj.FreqVec,S_diss(:,1)-1,'.','MarkerSize',10)
-            hold on
-            plot(obj.FreqVec,S_diss(:,2)-1,'r.','MarkerSize',10)
+            plot(obj.FreqVec,P_dis(:,1,1),'.','MarkerSize',10)
+            hold on        
+            plot(obj.FreqVec,P_dis(:,2,2),'r.','MarkerSize',10)
             legend('Port1','Port2')
-            if ~isempty(varargin)
-                fileName = varargin{1};
+            end
+            if ~isempty(varargin) && length(varargin) == 2
+                fileName = varargin{2};
                 
                 %Write each variance distribuion of the scattering
                 %coefficients to a file.
@@ -134,7 +142,7 @@ classdef NPortAnalysis  < matlab.mixin.SetGet
                 for ff = 1:length(obj.FreqVec)
                     fprintf(fileID,'%e \t',obj.FreqVec(ff));
                     for ii = 1:obj.NrPorts
-                        fprintf(fileID,'%e',S_diss(ff,ii));
+                        fprintf(fileID,'%e',P_dis(ff,ii,ii));
                         if ii ~= obj.NrPorts
                             fprintf(fileID,'\t');
                         else
@@ -175,8 +183,8 @@ classdef NPortAnalysis  < matlab.mixin.SetGet
             Mach_Plus = zeros(obj.NrPorts);
             Mach_Min = zeros(obj.NrPorts);
             for ii = 1:obj.NrPorts
-                Mach_Plus(ii,ii) = (1+MachNumberPort(ii))*sqrt(pi*Radius(ii)^2);
-                Mach_Min(ii,ii) = (1-MachNumberPort(ii))*sqrt(pi*Radius(ii)^2);
+                Mach_Plus(ii,ii) = (1-MachNumberPort(ii))*sqrt(pi*Radius(ii)^2);
+                Mach_Min(ii,ii) = (1+MachNumberPort(ii))*sqrt(pi*Radius(ii)^2);
             end
             
             %Reshape the scattering matrix and calculate the scattering matrix
