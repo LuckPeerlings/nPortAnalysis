@@ -40,6 +40,9 @@ for nn = 1:length(obj.UVInputList)
             if CovarianceMatrix(2,2) == 0
                 L{nn}{jj}{ff} = zeros(2,2);
                 L{nn}{jj}{ff}(1,1) = sqrt(CovarianceMatrix(1,1));
+            elseif CovarianceMatrix(1,1) == 0
+                L{nn}{jj}{ff} = zeros(2,2);
+                L{nn}{jj}{ff}(2,2) = sqrt(CovarianceMatrix(2,2)); 
             else
                 L{nn}{jj}{ff} = chol(CovarianceMatrix,'lower');
             end
