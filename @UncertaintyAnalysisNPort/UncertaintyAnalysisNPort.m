@@ -165,7 +165,7 @@ classdef UncertaintyAnalysisNPort < MultiVariateAnalysis
             %Numbers, Dylan F. Willians, C.m. Wand and Uwe Arz
             for ii = 1:obj.ClassHandle.NrPorts
                 for jj = 1:obj.ClassHandle.NrPorts
-                    ScatUV = obj.Output.ScatNPort.(['S',num2str(jj),num2str(ii)]);
+                    ScatUV = obj.Output.ScatNPort.(['S',num2str(ii),num2str(jj)]);
                     if isempty(ScatUV.CorrVar)
                         TotVar = squeeze(sum(ScatUV.Var,1));
                     else
@@ -175,7 +175,7 @@ classdef UncertaintyAnalysisNPort < MultiVariateAnalysis
                         Theta = angle(ScatUV.Value(1,mm));
                         R = [cos(-Theta), -sin(-Theta); sin(-Theta), cos(-Theta)];
                         AlignedUCMatrix = R*reshape(TotVar(mm,:),2,2)*transp(R);
-                        AlignedVar(:,mm) = AlignedUCMatrix(:);
+                        AlignedVar(ii,jj,:,mm) = AlignedUCMatrix(:);
                     end
                 end
             end
@@ -184,9 +184,9 @@ classdef UncertaintyAnalysisNPort < MultiVariateAnalysis
                 fprintf(fileID,'%e',obj.ClassHandle.FreqVec(ff));
                 for ii = 1:obj.ClassHandle.NrPorts
                     for jj = 1:obj.ClassHandle.NrPorts
-                        ScatUV = obj.Output.ScatNPort.(['S',num2str(jj),num2str(ii)]);
+                        ScatUV = obj.Output.ScatNPort.(['S',num2str(ii),num2str(jj)]);
                         Angle = unwrap(angle( ScatUV.Value))*180/pi;
-                        fprintf(fileID,'\t %e \t %e \t %e \t %e',abs(ScatUV.Value(ff)),Angle(ff), 2*sqrt(AlignedVar(1,ff)),2*sqrt(AlignedVar(4,ff))./abs( ScatUV.Value(ff))*180/pi);
+                        fprintf(fileID,'\t %e \t %e \t %e \t %e',abs(ScatUV.Value(ff)),Angle(ff), 2*sqrt(AlignedVar(ii,jj,1,ff)),2*sqrt(AlignedVar(ii,jj,4,ff))./abs( ScatUV.Value(ff))*180/pi);
                     end
                 end
                 fprintf(fileID,'\n');

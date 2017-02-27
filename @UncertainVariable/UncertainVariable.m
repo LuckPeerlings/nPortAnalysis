@@ -259,6 +259,8 @@ function [UCMatrix,CorrMatrix] = GetCorrUCMatrix(CovarMatrix)
     
     if UCMatrix(4) == 0;
         CorrMatrix = [1, 0,0,0];
+    elseif UCMatrix(1) == 0;
+        CorrMatrix = [0, 0,0,1];
     else
         CorrMatrix = [1, CovarMatrix(1,2)/UCMatrix(1), CovarMatrix(2,1)/UCMatrix(4), 1];
     end
