@@ -86,6 +86,7 @@ DEFAULT.OptimMethod = 'None'; % The optimization method that has to be used.
 DEFAULT.GetOutput = false;
 DEFAULT.Correction = []; %See if the correction has been calculated, if so don't 
                    %apply the optimization scheme but use the correction directly.
+DEFAULT.Corr = [];
 
 addParameter(pars,'f',DEFAULT.f)
 addParameter(pars,'P',DEFAULT.P)
@@ -98,6 +99,7 @@ addParameter(pars,'GasProp',DEFAULT.GasProp)
 addParameter(pars,'WaveNumberProp',DEFAULT.WaveNumberProp)
 addParameter(pars,'GetOutput',DEFAULT.GetOutput)
 addParameter(pars,'Correction',DEFAULT.Correction)
+addParameter(pars,'Corr',DEFAULT.Corr)
 
 parse(pars,varargin{:});
 
@@ -280,6 +282,7 @@ switch Data.Method
         DecompP.Min = Decomposition(1,:);
         DecompP.Plus = Decomposition(2,:);
     case 'WLLS'
+        assignin('base','WaveNumberProp',WaveNumberProp)
         k = NPortAnalysis.WaveNumber(WaveNumberProp);
         %Loop over the frequency vector, to set up the linear system of
         %eqations

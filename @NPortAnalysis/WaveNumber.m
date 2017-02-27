@@ -78,6 +78,7 @@ end
 %Herein are all the models for the wavenumbers, each model can be accessed
 %by setting the right model name, the extra needed parameters are stored in
 %the fields of model
+
 switch Model.Name
     case 'NoLoss'           
         k = omega./Prop.SpeedOfSound;
