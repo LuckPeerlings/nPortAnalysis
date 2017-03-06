@@ -62,8 +62,7 @@ classdef NPortAnalysis  < matlab.mixin.SetGet
             obj.NrPorts  = NrPorts;
             obj.NrMeas = NrMeas;
             obj.InputChecked = true;
-        end
-        
+        end       
         function obj = EnergyDissipationPerPort(obj,varargin)
             for ii = 1:obj.NrPorts
                 for jj = 1:obj.NrMeas
@@ -152,11 +151,7 @@ classdef NPortAnalysis  < matlab.mixin.SetGet
                 end
                 fclose(fileID);
             end
-        end
-        
-        
-        
-        
+        end       
         function obj = calculateDissipation(obj)
             %Obtain the mean value of the flow speed for each port.
             for ii = 1:obj.NrPorts
@@ -250,8 +245,7 @@ classdef NPortAnalysis  < matlab.mixin.SetGet
                     obj.ScatNPort.(['S',num2str(ii),num2str(jj)]) = reshape(S(ii,jj,:),1,[]);
                 end
             end
-        end
-        
+        end       
         function displayScatMatrix(obj)
             if ~obj.InputChecked
                 error('The input has not been checked')
@@ -272,8 +266,7 @@ classdef NPortAnalysis  < matlab.mixin.SetGet
                     plot(obj.FreqVec, unwrap(angle( obj.ScatNPort.(['S',num2str(ii),num2str(jj)]) ))*180/pi)
                 end
             end
-        end
-        
+        end      
         function displayTransferMatrix(obj)
             %Calculate the scattering transfer matrix
             for ff = 1:length(obj.FreqVec)
@@ -318,8 +311,7 @@ classdef NPortAnalysis  < matlab.mixin.SetGet
                 fprintf(fileID,'\n');
             end
             fclose(fileID);
-        end
-        
+        end        
     end
     methods (Static)
         WaveDecomposition_chk(varargin)
