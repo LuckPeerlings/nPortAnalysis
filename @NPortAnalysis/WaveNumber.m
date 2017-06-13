@@ -117,6 +117,21 @@ switch Model.Name
              - 1i./Sh.^2 .* (1+(Prop.Gamma-1)./sqrt(Prop.Prandtl)-0.5.*Prop.Gamma.*(Prop.Gamma-1)./sqrt(Prop.Prandtl)));        
         WaveNumber.Upstream = k ;
         WaveNumber.Downstream = k;
+        
+    case 'ViscTherm2ndOrder_withFluidLosses'
+        %This model is taken from "Damping and Reflection Coefficient
+        %Maasurements for an Open Pipe at Low Mach and Low Helmholtz numbers"
+        %MCAM Peters, A.Hirschberg, A.J. Reijnen and A.P.J. Wijnands,
+        %J.Fluid.Mech 1993 vol 256 page 499-534.
+        r = Model.r;
+        Sh = r.*(omega .* Prop.Density./Prop.Viscosity).^(0.5);
+        k = (omega./Prop.SpeedOfSound) .* ...
+            (1 + (1-1i)./sqrt(2).*1./Sh.*(1 + (Prop.Gamma-1)./sqrt(Prop.Prandtl)) ...
+             - 1i./Sh.^2 .* (1+(Prop.Gamma-1)./sqrt(Prop.Prandtl)-0.5.*Prop.Gamma.*(Prop.Gamma-1)./sqrt(Prop.Prandtl)));     
+        alpha_fluid = FluidLosses(omega,Prop);
+        WaveNumber.Upstream = k  - 1i*alpha_fluid;
+        WaveNumber.Downstream = k - 1i*alpha_fluid;
+        
     case 'Howe1995'
         freq = f;
         radius = Model.r;

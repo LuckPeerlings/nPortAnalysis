@@ -134,12 +134,11 @@ switch FunctionInput.OptimMethod
         %deviation of the data and don't use that data for the optimization
         x0 = 0;
         SelecVec = [];
-        res = ObjectiveFunction_Temperature(x0,FunctionInput,SelecVec,false);
+        res = ObjectiveFunction_Temperature(x0,FunctionInput,SelecVec,false);        
         std_res = sqrt(var(res));
-        SelecVec = res<std_res;        
+        SelecVec = res<std_res;       
         %In this case, the real part of the wavenumber will be optimized,
         %so the residual is as small as possible
-        
         fun = @(x) sum(ObjectiveFunction_Temperature(x,FunctionInput,SelecVec,false));
         [x] = fminunc(fun,x0);
         %Using an unconstrained optimizer to find the right temperature.
@@ -148,10 +147,9 @@ switch FunctionInput.OptimMethod
             warning('The temperature correction is larger than 5 degrees');
             pause;
         end
-        fprintf('Temperature correction %f \n',x)
-        fprintf('True temperature %f \n',mean(FunctionInput.GasProp.t)+ x)
-        [DecompP,Residual] = DecompositionMethod(FunctionInput);     
+        fprintf('Temperature correction %f + %f \n',mean(FunctionInput.GasProp.t),x)
         Correction.T = x;
+        [DecompP,Residual] = DecompositionMethod(FunctionInput);  
    case 'TempFlowOptim'        
         %Calculate the residual with the current stating guess, find those
         %points that have a large deviation w.r.t to the standard
@@ -187,6 +185,38 @@ switch FunctionInput.OptimMethod
         [DecompP,Residual] = DecompositionMethod(FunctionInput);        
         Correction.T = x(1);
         Correction.U = x(2);
+   case 'FlowOptim'        
+        %Calculate the residual with the current stating guess, find those
+        %points that have a large deviation w.r.t to the standard
+        %deviation of the data
+        x0 = [0,0];
+        SelecVec = [];
+        res = ObjectiveFunction_TemperatureFlow(x0,FunctionInput,SelecVec,false);
+        std_res = sqrt(var(res));
+        SelecVec = res<2*std_res;
+        SelecVec(1:10) = 0;
+        SelecVec(end-10:end) = 0;
+        %In this case, the real part of the wavenumber will be optimized,
+        %so the residual is as small as possible
+        fun = @(x) sum(ObjectiveFunction_Flow(x,FunctionInput,SelecVec,false));
+        
+        %Using an unconstrained optimizer to find the right temperature.
+        x = fminunc(fun,x0);
+
+
+        if abs(x)> 5;
+            warning('The temperature correction is larger than 5 degrees');
+            pause;
+        end
+        fprintf('------\n')
+        fprintf('Amount of points %i out of %i\n',sum(SelecVec),length(SelecVec))
+        fprintf('Velocity correction %f + %f \n',FunctionInput.WaveNumberProp.U,x(1))
+        Res = sum(ObjectiveFunction_TemperatureFlow(x,FunctionInput,SelecVec,false));
+        Res0 = sum(ObjectiveFunction_TemperatureFlow(x0,FunctionInput,SelecVec,false));
+        fprintf('Residual,Start %f, End %f \n',Res0,Res)
+        FunctionInput.WaveNumberProp.U  = FunctionInput.WaveNumberProp.U+x(1);
+        [DecompP,Residual] = DecompositionMethod(FunctionInput);        
+        Correction.U = x(1);        
 end
 end
 
@@ -203,7 +233,19 @@ function res = ObjectiveFunction_Temperature(x,Data,SelecVec,display)
         res = res(SelecVec);
     end
 end
-
+function res = ObjectiveFunction_Flow(x,Data,SelecVec,display)
+    %The wavenumber will optimized by adding
+    Data.WaveNumberProp.U = Data.WaveNumberProp.U + x(1) ;
+    [DecompP,res] = DecompositionMethod(Data);
+    if display
+        figure; plot(res);
+    end
+    if isempty(SelecVec)
+        return
+    else
+        res = res(SelecVec);
+    end
+end
 function res = ObjectiveFunction_TemperatureFlow(x,Data,SelecVec,display)
     %The wavenumber will optimized by adding
     Data.GasProp.t = Data.GasProp.t + x(1);    
@@ -296,6 +338,31 @@ switch Data.Method
                 conj(squeeze(CompCoVar(ii,:,:))), conj(squeeze(CoVar(ii,:,:)))];
             %Normalizing the augmented covariance matrix
             CoVarMatrix_Aug = CoVarMatrix_Aug/norm(CoVarMatrix_Aug);
+            b_aug = [P(:,ii);conj(P(:,ii))];
+            Decomposition(:,ii) = inv(B'*inv(CoVarMatrix_Aug)*B)*B'*inv(CoVarMatrix_Aug)*b_aug;
+            res(ii) = transp(B*Decomposition(:,ii)-b_aug)*conj(B*Decomposition(:,ii)-b_aug);
+            
+        end
+        DecompP.Min = Decomposition(1,:);
+        DecompP.Plus = Decomposition(2,:);
+    case 'WLLS_RelWeighting'
+        assignin('base','WaveNumberProp',WaveNumberProp)
+        k = NPortAnalysis.WaveNumber(WaveNumberProp);
+        %Loop over the frequency vector, to set up the linear system of
+        %eqations
+        for ii = 1:length(f)
+            for z = 1:length(x)
+                A(z,:) = [exp(-1i.*k.Downstream(ii).*x(z))  exp(1i.*k.Upstream(ii).*x(z))];
+            end
+            B = [A , zeros(size(A));
+                zeros(size(A)), conj(A)];
+            CoVarMatrix_Aug = [squeeze(CoVar(ii,:,:)), squeeze(CompCoVar(ii,:,:)) ;
+                conj(squeeze(CompCoVar(ii,:,:))), conj(squeeze(CoVar(ii,:,:)))];
+            D = norm(P(:,ii))*[ diag(1./abs(P(:,ii))), zeros(length(P(:,ii)));
+                  zeros(length(P(:,ii))), diag(1./abs(P(:,ii)))];
+              
+            %Normalizing the augmented covariance matrix
+            CoVarMatrix_Aug = D*CoVarMatrix_Aug*transp(D)/norm(CoVarMatrix_Aug);
             b_aug = [P(:,ii);conj(P(:,ii))];
             Decomposition(:,ii) = inv(B'*inv(CoVarMatrix_Aug)*B)*B'*inv(CoVarMatrix_Aug)*b_aug;
             res(ii) = transp(B*Decomposition(:,ii)-b_aug)*conj(B*Decomposition(:,ii)-b_aug);

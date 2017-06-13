@@ -97,6 +97,8 @@ classdef NPortAnalysis  < matlab.mixin.SetGet
             Mach_Plus = zeros(obj.NrPorts);
             Mach_Min = zeros(obj.NrPorts);
             for ii = 1:obj.NrPorts
+                MachNumberPort(ii)
+                sqrt(pi*Radius(ii)^2)
                 Mach_Plus(ii,ii) = (1-MachNumberPort(ii))*sqrt(pi*Radius(ii)^2);
                 Mach_Min(ii,ii) =  (1+MachNumberPort(ii))*sqrt(pi*Radius(ii)^2);
             end
@@ -215,7 +217,7 @@ classdef NPortAnalysis  < matlab.mixin.SetGet
                         InputDecomp = obj.Input.(['Port',num2str(ii)]).(['Meas',num2str(jj)]);
                     end
                     InputDecomp.f = obj.FreqVec;
-                    [P,Correction] = NPortAnalysis.WaveDecomposition( InputDecomp);
+                    [P,Correction] = NPortAnalysis.WaveDecomposition(InputDecomp);
                     
                     
                     if ~isempty(Correction)
