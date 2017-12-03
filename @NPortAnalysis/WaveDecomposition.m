@@ -319,7 +319,7 @@ switch Data.Method
             b = P(:,ii);            
             %And solve either the determined or the over determined system
             Decomposition(:,ii) = (A'*A)\(A'*b);
-            res(ii) = transp(A*Decomposition(:,ii)-b)*(conj(A*Decomposition(:,ii)-b));
+            res(ii) = transpose(A*Decomposition(:,ii)-b)*(conj(A*Decomposition(:,ii)-b));
         end
         DecompP.Min = Decomposition(1,:);
         DecompP.Plus = Decomposition(2,:);
@@ -340,7 +340,7 @@ switch Data.Method
             CoVarMatrix_Aug = CoVarMatrix_Aug/norm(CoVarMatrix_Aug);
             b_aug = [P(:,ii);conj(P(:,ii))];
             Decomposition(:,ii) = inv(B'*inv(CoVarMatrix_Aug)*B)*B'*inv(CoVarMatrix_Aug)*b_aug;
-            res(ii) = transp(B*Decomposition(:,ii)-b_aug)*conj(B*Decomposition(:,ii)-b_aug);
+            res(ii) = transpose(B*Decomposition(:,ii)-b_aug)*conj(B*Decomposition(:,ii)-b_aug);
             
         end
         DecompP.Min = Decomposition(1,:);
@@ -362,10 +362,10 @@ switch Data.Method
                   zeros(length(P(:,ii))), diag(1./abs(P(:,ii)))];
               
             %Normalizing the augmented covariance matrix
-            CoVarMatrix_Aug = D*CoVarMatrix_Aug*transp(D)/norm(CoVarMatrix_Aug);
+            CoVarMatrix_Aug = D*CoVarMatrix_Aug*transpose(D)/norm(CoVarMatrix_Aug);
             b_aug = [P(:,ii);conj(P(:,ii))];
             Decomposition(:,ii) = inv(B'*inv(CoVarMatrix_Aug)*B)*B'*inv(CoVarMatrix_Aug)*b_aug;
-            res(ii) = transp(B*Decomposition(:,ii)-b_aug)*conj(B*Decomposition(:,ii)-b_aug);
+            res(ii) = transpose(B*Decomposition(:,ii)-b_aug)*conj(B*Decomposition(:,ii)-b_aug);
             
         end
         DecompP.Min = Decomposition(1,:);
