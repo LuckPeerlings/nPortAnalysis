@@ -4,7 +4,7 @@ classdef ZeroNumerical < handle
     
     %Todo list: Fix when a zero is present on the boundary. 
     %Option is to find the four neighbouring points, remove them from the
-    %search list and replace the square with a different subdivision.
+    %search list and replace the Domain with a different subdivision.
     properties
         function_handle
         diff_delta = 1e-6;
@@ -13,23 +13,28 @@ classdef ZeroNumerical < handle
         iterationNumber = 0;
         domainList = [];
         randSeedNewtonSearch = 5;
-        zeros = [];
-        uniqueZeroTol = 1e-6;
+        found_zeros = [];
+        uniqueZeroTol = 1e-3;
         expand_ratio = 1;
         domainSubDivision = 2;
         maxIteration = 500;
         PlotDomains = true;
+        NewtonSearchOptions
+        FminUncSearchOptions
     end
     
     methods        
         function obj = ZeroNumerical(function_handle,initialDomain)
             if nargin == 0
                 %Construct an example object
-                obj.function_handle = @(z) z.^50 + z.^12-5*sin(20*z).*cos(12*z) - 1 ;
-                D.Origin = -5.0-4.0i;
-                D.Width = 10;
-                D.Height = 8;
+                z_scale = 0.5;
+                obj.function_handle = @(z) (z./z_scale).^50 + (z./z_scale).^12-5*sin(20*(z./z_scale)).*cos(12*(z./z_scale)) - 1 ;
+                obj.function_handle = @(z) (z).^50 + 0.9;
+                D.Origin = -3.1-3.1i;
+                D.Width = 5;
+                D.Height = 5;
                 obj.initialDomain = D;
+                obj.NewtonSearchOptions = optimoptions('fsolve','Display','none','Algorithm','levenberg-marquardt','ScaleProblem','Jacobian','TolX',1e-20,'TolFun',1e-20);
             else
                 obj.function_handle = function_handle;
                 obj.initialDomain = initialDomain;
@@ -37,22 +42,92 @@ classdef ZeroNumerical < handle
         end
         
         function plotZeros(obj)
-            if isempty(obj.zeros)
+            if isempty(obj.found_zeros)
                 warning('No zeros calculated')
                 return
             end
             figure;
             axes(); hold all;
-            for ii = 1:length(obj.zeros)
-                plot(real(obj.zeros(ii)),imag(obj.zeros(ii)), 'o')
+            for ii = 1:length(obj.found_zeros)
+                plot(real(obj.found_zeros(ii)),imag(obj.found_zeros(ii)), 'o')
+            end
+            obj.PlotDomain(obj.initialDomain, gca);
+        end
+        function [] = PlotFunValuesDomain(obj,Domain,nPoints)
+            ReAxis = linspace(real(Domain.Origin), real(Domain.Origin)+Domain.Width,nPoints);
+            ImAxis = linspace(imag(Domain.Origin), imag(Domain.Origin)+Domain.Height,nPoints);
+            
+            [Re,Im] = meshgrid(ReAxis,ImAxis);
+            FunVal = obj.function_handle(Re+1i*Im);
+            A = log10(min(abs( FunVal(:) )));
+            B = log10(max(abs( FunVal(:) )));            
+            lev1 = logspace(A,B,10);            
+            figure
+            contour(Re,Im,abs(FunVal),lev1,'k'); hold all
+            contour(Re,Im,abs(FunVal),lev2,'r'); 
+            figure;
+            contour(Re,Im,abs(FunVal),lev2,'r');
+        end
+        function [NewDomainList,IntVal] = NewDomain(obj,Domain,Iteration)  
+            NrIterations = 4;
+            ZerosOnVertices = true;
+            qq = 1;
+            while ZerosOnVertices && qq < NrIterations
+                IntVal = [];
+                ZeroOnVertex = [];
+                NewDomainList = [];
+                ZerosOnVertices = false;                
+                if mod(Iteration,2) == 0 
+                    NewDomainList = obj.SubDivideSearchDomain(Domain,1+qq,1);
+                else
+                    NewDomainList = obj.SubDivideSearchDomain(Domain,1,1+qq);
+                end
+                for ii = 1:length(NewDomainList)
+                    [IntVal(ii),ZeroOnVertex(ii)] = obj.IntegrationSearchDomain(NewDomainList(ii));
+                    if ZeroOnVertex(ii) ~= 0
+                        ZerosOnVertices = true;
+                        qq = qq +1 ;
+                        break
+                    end
+                end
+            end
+            if qq == NrIterations
+                error('No subdivision possible which does not contain a zero on one of the vertices')
             end
         end
+        function ZerosList = NewtonSearch(obj,Domain)                        
+            %Perform a Newton's search in the domain
+            nn = 1;
+            foundzero = [];
+            for ii = 1:obj.randSeedNewtonSearch
+                z0 = obj.StartValueSearchDomain(Domain);
+                if imag(z0) == 0
+                    %If the initial value has no imaginary
+                    %component, add a small component to search
+                    %for complex zeros.
+                    z0 = z0 + 1e3*1i;
+                end
+                fun = obj.function_handle;
                 
-            
-            
+                %Scale the function to have a better convergence of the
+                %solver.
+                funscaled = @(z) 1/fun(z0)*fun(z);
+                [z,fval,exitflag,output] = fsolve(funscaled,z0,obj.NewtonSearchOptions);
+                if exitflag > 0
+                    % Check if the found zero is within the domain
+                    if obj.InDomain(Domain, z)
+                        foundzero(nn) = z;
+                        nn = nn+1;
+                    end
+                end
+            end 
+            [UniqueZeros,Ia,Ib] = uniquetol(abs(foundzero),obj.uniqueZeroTol);
+            ZerosList = foundzero(Ia);
+        end
+        
         function searchZeros(obj)
             %First determine the winding number in the initial domain
-            [obj.initialZeros,ZeroOnVertex] = obj.IntegrationSearchArea(obj.initialDomain);
+            [obj.initialZeros,ZeroOnVertex] = obj.IntegrationSearchDomain(obj.initialDomain);
             if ZeroOnVertex ~= 0
                 error('The boundary of the initial domain contains a zero')
             end
@@ -66,281 +141,134 @@ classdef ZeroNumerical < handle
             %found within the search domain.
             %Iterate until there is no subdomain on the list.
             
-            SubDividedDomain = obj.SubDivideSearchArea(obj.initialDomain,2,1);
-            obj.domainList = SubDividedDomain;
             Iteration = 0;
-            obj.zeros = [];
+            obj.found_zeros = [];
             ax = [];
-
-            
-           
-            while ~isempty(obj.domainList) || Iteration < obj.maxIteration
-                DomainList = obj.domainList;
+            DomainList = obj.initialDomain;
+            while ~isempty(DomainList) || Iteration < obj.maxIteration
+                IntVal = [];
                 NewDomainList = [];
                 ZerosList = [];
                 
-                %Subdivide contour and Integrate around each sub contour                            
-                for dd = 1:length(DomainList)
-                    disp('Integrating around domain')
-                    [IntVal(dd),ZeroOnVertex(dd)] = obj.IntegrationSearchArea(DomainList(dd));
-                    
-                    if ZeroOnVertex(dd) ~= 0
-                        
-                    end
+                %Subdivide contour and Integrate around each sub contour
+                disp('Subdividing domain and integrating around domain')   
+                for dd = 1:length(DomainList)                                     
+                    [NewDomains,NewIntVal] = obj.NewDomain(DomainList(dd),Iteration);
+                    NewDomainList = [NewDomainList, NewDomains];
+                    IntVal = [IntVal,NewIntVal];
                 end 
                 
                 if obj.PlotDomains
-                    for dd = 1:length(DomainList)
-                    ax = obj.PlotDomain(DomainList(dd), ax);  
-                    %ax = obj.PlotDomainVal(obj.domainList(dd), IntVal(dd), ax);  
+                    cla(ax)
+                    for dd = 1:length(NewDomainList)
+                    ax = obj.PlotDomain(NewDomainList(dd), ax);  
+                    ax = obj.PlotDomainVal(NewDomainList(dd), round(IntVal(dd)), ax);  
                     end
                     set(ax,'Xlim',[real(obj.initialDomain.Origin), real(obj.initialDomain.Origin) + obj.initialDomain.Width],...
                            'Ylim',[imag(obj.initialDomain.Origin), imag(obj.initialDomain.Origin) + obj.initialDomain.Height]);
                     drawnow;
                 end
-
+                ZerosList = [];
                 IntVal = round(IntVal);
-                for dd = 1:length(DomainList)    
-                    if IntVal(dd) == 1
-                        %Perform a Newton's search in the domain
-                        nn = 1;
-                        foundzero = [];
-                        for ii = 1:obj.randSeedNewtonSearch
-                            z0 = obj.StartValueSearchArea(DomainList(dd));
-                            if imag(z0) == 0
-                                %If the initial value has no imaginary
-                                %component, add a small component to search
-                                %for complex zeros.
-                                z0 = z0 + 1e3*1i;
-                            end
-                            disp('Searching for zero')
-                            z = fsolve(obj.function_handle,z0);                            
-                            % Check if the found zero is within the domain
-                            if obj.InDomain(DomainList(dd), z)
-                                foundzero(nn) = z;
-                                nn = nn+1;
-                            end
-                        end 
-                        if length(uniquetol(abs(foundzero),obj.uniqueZeroTol)) >= 1
-                            if length(uniquetol(abs(foundzero),obj.uniqueZeroTol)) > 1
-                                warning('No unique zero found')
-                            end
-                            [UniqueZeros,Ia,Ib] = uniquetol(abs(foundzero),obj.uniqueZeroTol);
-                            ZerosList = [ZerosList,foundzero(Ia) ];
-                        elseif isempty(uniquetol(abs(foundzero),obj.uniqueZeroTol))
-                            %If no zeros have been found within the
-                            %domain, subdivide the domain.
-                            warning('No zeros found within the domain, subdividing domain')
-                            NewDomainList = [NewDomainList, obj.SubDivideSearchArea(DomainList(dd),mod(Iteration,2)+1,mod(Iteration+1,2)+1)];
-                        end
-                    elseif IntVal(dd) == Inf
-                        %If IntVal returns infinity, a zero is present on
-                        %the border of the integration. Expand the
-                        %Integration area and add it to the list for the
-                        %next iteration                        
-                        disp('Expanding integration area')
-                        ExpandedArea = obj.ExpandArea(DomainList(dd),obj.expand_ratio);
-                        NewDomainList = [NewDomainList,ExpandedArea];
-                    elseif IntVal(dd) > 1
-                        %Subdivide the domain
-                        disp('Subdividing integration area')
-                        NewDomainList = [NewDomainList, obj.SubDivideSearchArea(DomainList(dd),mod(Iteration,2)+1,mod(Iteration+1,2)+1)];
-                        
-                    elseif IntVal(dd) == -1
-                        disp('Expanding integration area')
-                        ExpandedArea = obj.ExpandArea(DomainList,obj.expand_ratio);
-                        NewDomainList = [NewDomainList,ExpandedArea];
-                        continue
+                RemoveDomain = [];
+                for dd = 1:length(NewDomainList)                      
+                    if IntVal(dd) == 0    
+                            RemoveDomain = [RemoveDomain,dd];
                     end
-                end
+                    if IntVal(dd) == 1                        
+                        NewZeroes = obj.NewtonSearch(NewDomainList(dd));
+                        if length(NewZeroes) == 1
+                            RemoveDomain = [RemoveDomain,dd];
+                            ZerosList = [ZerosList,NewZeroes];
+                        end
+                        if length(NewZeroes) > 1
+                            warning('No unique zero found')
+                        end
+                    end
+                end    
+                NewDomainList(RemoveDomain) = [];
+                Iteration = Iteration + 1;                
+                DomainList = NewDomainList;
                 
-                Iteration = Iteration + 1;
                 %Update the class properties
-                obj.zeros = [obj.zeros,ZerosList];                
+                obj.found_zeros = [obj.found_zeros,ZerosList];                
                 obj.iterationNumber = Iteration;
                 obj.domainList = NewDomainList;
-            end
-            
+            end        
             
         end
-        function [NewDomainList, NewIntVal] = ReDivisionDomain(obj, DomainList, IntVal, VertexError)
-            %Function to redivision the integration area
-            
-            %Find the domains that have an error
-            [I] = find(VertexError ~= 0);
-            %Obtain the origins of their parent rectangle. Before the
-            %division there was no error
-            for ii=1:length(I)
-                Parent(ii) = DomainList(I(ii)).ParentOrigin;
-            end
-            %Remove the rectangles with the same parent rectangle from the
-            %domain list.
-            DomainList(I) = [];
-            %Obtain the unique parent rectangles
-            [ParentOrigin] = unique(ParentOrigin);
-            %Redivide the domain, calculate the integral and return the data if it is correct 
-            
-            for ii = 1:length(ParentOrigin)
-                
-                [NewDomainList, obj.SubDivideSearchArea(DomainList(dd),mod(Iteration,2)+1,mod(Iteration+1,2)+1)];
-            end
-                
-            for dd = 1:length(obj.domainList)
-                if VertexError(dd) ~= 0
-                    %Determine on which vertice of the rectangle the
-                    %zero is placed and find the origins of the side
-                    %rectangle.
-                    %There always has to be one
-                    if VertexError(dd) == 1
-                        NeighBouringOrigin = DomainList(dd).Origin - 1i*DomainList(dd).Height;
-                        NewDomain.Origin = NeighBouringOrigin;
-                    end
-                    if VertexError(dd) == 2
-                        NeighBouringOrigin = DomainList(dd).Origin + DomainList(dd).Width;
-                        NewDomain.Origin = DomainList(dd).Origin;
-                    end
-                    if VertexError(dd) == 3
-                        NeighBouringOrigin = DomainList(dd).Origin + 1i*DomainList(dd).Height;
-                        NewDomain.Origin = DomainList(dd).Origin;
-                    end
-                    if VertexError(dd) == 4
-                        NeighBouringOrigin = DomainList(dd).Origin - DomainList(dd).Width;
-                        NewDomain.Origin = NeighBouringOrigin;
-                    end
-                    
-                    for nn = 1:length(DomainList)
-                        if DomainList(nn).Origin == NeighBouringOrigin
-                            
-                            break
-                        end
-                    end
-                    
-                    NewDomain.Origin = NeighBouringOrigin;
-                    %Add the two domains together, and subdivide them
-                    if VertexError(dd) == 1 || VertexError(dd) == 3
-                        NewDomain.Height = 2*DomainList(dd).Height;
-                        NewDomain.Width = 1*DomainList(dd).Width;
-                    end
-                    if VertexError(dd) == 2 || VertexError(dd) == 4
-                        NewDomain.Height = 1*DomainList(dd).Height;
-                        NewDomain.Width = 2*DomainList(dd).Width;
-                    end
-                    qq = 1;
-                    NrMaxSubDivisions = 3;
-                    Success = false;
-                    
-                    while ~Success && qq < NrMaxSubDivisions
-                        IntVal_New = [];
-                        VertexError_New = [];
-                        Success = true;
-                        SubDividedNewDomain = obj.SubDivideSearchArea(obj.initialDomain,obj.domainSubDivision + qq);
-                        %                             for jj = 1:length(SubDividedNewDomain)
-                        %                                 ax = obj.PlotDomain(SubDividedNewDomain(jj), ax);
-                        %                             end
-                        for jj = 1:length(SubDividedNewDomain)
-                            [IntVal_New(jj),VertexError_New(jj)] = obj.IntegrationSearchArea(SubDividedNewDomain(jj));
-                            if VertexError_New(jj) ~= 0
-                                %Restart the loop and add one more to the
-                                %subdivision of the domain
-                                qq = qq +1;
-                                Success = false;
-                                break
-                            end
-                        end
-                    end
-                    if ~Success
-                        error('Integration along the edges does not work')
-                    else
-                        %Remove the old domains and replace them with
-                        %the new data
-                        obj.domainList([dd,nn]) = [];
-                        IntVal([dd,nn]) = [];
-                        IntVal = [IntVal, IntVal_New];
-                        obj.domainList = [obj.domainList, SubDividedNewDomain];
-                    end
-                end
-            end
         
-        function [ax] = PlotDomain(obj,Square, ax)
+       
+        function [ax] = PlotDomain(obj,Domain, ax)
             if isempty(ax)
                 figure;
                 ax = axes(gcf); hold on;
             end
             
-            IntPoints = obj.SquareToIntegrationPoints(Square);
+            IntPoints = obj.DomainToIntegrationPoints(Domain);
             for ii = 1:length(IntPoints)-1
                 line([real(IntPoints(ii)) real(IntPoints(ii+1))],[imag(IntPoints(ii)) imag(IntPoints(ii+1))])
             end
         end
         
-        function [ax] = PlotDomainVal(obj,Square, Val, ax)
+        function [ax] = PlotDomainVal(obj,Domain, Val, ax)
             if isempty(ax)
                 figure;
                 ax = axes(gcf); hold on;
             end
-            text(real(Square.Origin) + 0.5*Square.Width, imag(Square.Origin) + 0.5*Square.Height,num2str(Val));         
+            text(real(Domain.Origin) + 0.5*Domain.Width, imag(Domain.Origin) + 0.5*Domain.Height,num2str(Val));         
         end
         
         function val = NumIntegrand(obj, z)
             val = 1/(2*pi*1i)*(obj.function_handle(z+obj.diff_delta)-obj.function_handle(z-obj.diff_delta))./(2*obj.diff_delta)./...
                 obj.function_handle(z);
         end
-    
-        function NewSquare = ExpandArea(obj, Square,ExpansionRatio)
-            NewSquare.Origin = Square.Origin-0.5*Square.Width*ExpansionRatio - 1i*0.5*Square.Height*ExpansionRatio;
-            NewSquare.Width = Square.Width*ExpansionRatio;
-            NewSquare.Height = Square.Height*ExpansionRatio;
+        
+        function z0 = StartValueSearchDomain(obj,Domain)
+            z0 = Domain.Origin + (0.3*(rand(1)-0.5)+0.5)*Domain.Width + 1i*(0.3*(rand(1)-0.5)+0.5)*Domain.Height;
         end
         
-        function z0 = StartValueSearchArea(obj,Square)
-            z0 = Square.Origin + rand(1)*Square.Width + 1i*rand(1)*Square.Height;
-        end
-        
-        function bool = InDomain(obj,Square,z)
+        function bool = InDomain(obj,Domain,z)
             bool = false;
             %Check wether the complex number is the domain bounded by the
-            %Square.
-            if (real(z) > real(Square.Origin)) && (real(z) < real(Square.Origin) +Square.Width) ...
-                    && (imag(z) > imag(Square.Origin)) && (imag(z) < imag(Square.Origin) +Square.Height)
+            %Domain.
+            if (real(z) > real(Domain.Origin)) && (real(z) < real(Domain.Origin) +Domain.Width) ...
+                    && (imag(z) > imag(Domain.Origin)) && (imag(z) < imag(Domain.Origin) +Domain.Height)
                 bool = true;
             end
-        end
-        
+        end        
 
-        function SubDividedSquare = SubDivideSearchArea(obj,Square,nRe,nIm)
-            %Function to subdivide the search area in nRe*nIm sections
+        function SubDividedDomain = SubDivideSearchDomain(obj,Domain,nRe,nIm)
+            %Function to subdivide the search Domain in nRe*nIm sections
             for ii = 1:nRe
                 for jj = 1:nIm
-                    SubDividedSquare(nIm*(ii-1) + jj).Origin = Square.Origin + (ii-1)*Square.Width/nRe + 1i*(jj-1)*Square.Height/nIm;
-                    SubDividedSquare(nIm*(ii-1) + jj).Width = Square.Width/nRe;
-                    SubDividedSquare(nIm*(ii-1) + jj).Height = Square.Height/nIm;
-                    SubDividedSquare.ParentOrigin = Square.Origin;
-                    SubDividedSquare.ParentWidth = Square.Width;
-                    SubDividedSquare.ParentHeight = Square.Height;
+                    SubDividedDomain(nIm*(ii-1) + jj).Origin = Domain.Origin + (ii-1)*Domain.Width/nRe + 1i*(jj-1)*Domain.Height/nIm;
+                    SubDividedDomain(nIm*(ii-1) + jj).Width = Domain.Width/nRe;
+                    SubDividedDomain(nIm*(ii-1) + jj).Height = Domain.Height/nIm;
                 end
             end
         end
         
-        function IntPoints = SquareToIntegrationPoints(obj,Square)
+        function IntPoints = DomainToIntegrationPoints(obj,Domain)
             %This function returns the points in the complex domain
-            %that build up the square, based on an origin on the lower
+            %that build up the Domain, based on an origin on the lower
             %left corner, the width (real part) and height (imaginary
             %part) of the rectangle.
             %The points are ordered counter clock wise from the origin;
-            %Square(1) = Origin
-            %Square(2) = Width
-            %Square(3) = Height
-            IntPoints(1) = Square.Origin;
-            IntPoints(2) = Square.Origin + Square.Width;
-            IntPoints(3) = Square.Origin + Square.Width + 1i*Square.Height;
-            IntPoints(4) = Square.Origin + 1i*Square.Height;
-            IntPoints(5) = Square.Origin;
+            %Domain(1) = Origin
+            %Domain(2) = Width
+            %Domain(3) = Height
+            IntPoints(1) = Domain.Origin;
+            IntPoints(2) = Domain.Origin + Domain.Width;
+            IntPoints(3) = Domain.Origin + Domain.Width + 1i*Domain.Height;
+            IntPoints(4) = Domain.Origin + 1i*Domain.Height;
+            IntPoints(5) = Domain.Origin;
         end
         
-        function [IntVal,ZeroOnVertex] = IntegrationSearchArea(obj,Square)
+        function [IntVal,ZeroOnVertex] = IntegrationSearchDomain(obj,Domain)
             IntVal = 0;
             ZeroOnVertex = 0;
-            IntPoints = SquareToIntegrationPoints(obj,Square);
+            IntPoints = DomainToIntegrationPoints(obj,Domain);
             warning(''); %Clear the warning
             for ii = 1:length(IntPoints)-1
                     IntVal = IntVal + obj.NumIntegration(IntPoints(ii),IntPoints(ii+1));
