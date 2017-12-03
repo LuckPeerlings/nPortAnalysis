@@ -176,7 +176,8 @@ classdef NPortAnalysis  < matlab.mixin.SetGet
                 Radius(ii) = InputDecomp.(['Port',num2str(ii)]).Meas1.WaveNumberProp.Model.r;
             end
             
-            %Create the matrices to convert the propagating pressure wave to the propagating
+            %Create the matrices to convert the propagating pressure wave
+            %to the propagating energy
             Mach_Plus = zeros(obj.NrPorts);
             Mach_Min = zeros(obj.NrPorts);
             for ii = 1:obj.NrPorts
@@ -218,8 +219,7 @@ classdef NPortAnalysis  < matlab.mixin.SetGet
                     end
                     InputDecomp.f = obj.FreqVec;
                     [P,Correction] = NPortAnalysis.WaveDecomposition(InputDecomp);
-                    
-                    
+                   
                     if ~isempty(Correction)
                         %If the wave decomposition has an optimization
                         %procedure, save the correction to the input of the
@@ -247,7 +247,35 @@ classdef NPortAnalysis  < matlab.mixin.SetGet
                     obj.ScatNPort.(['S',num2str(ii),num2str(jj)]) = reshape(S(ii,jj,:),1,[]);
                 end
             end
-        end       
+        end
+        function obj = PlotTravellingWaveStrength(obj)
+            obj.NrPorts = length(fields(obj.Input));
+            %Check how many measurements there are, if there is a field
+            %called constant, do not take this as a measurement
+            for ii = 1:obj.NrPorts
+                NrMeas(ii) = length( fields( obj.Input.(['Port',num2str(ii)]) ) );
+                if isfield(obj.Input.(['Port',num2str(ii)]),'Constant')
+                    NrMeas(ii) = NrMeas(ii)-1;
+                end
+            end
+            figure
+            for ii = 1:obj.NrPorts
+                for jj = 1:obj.NrMeas
+                    if isfield(obj.Input.(['Port',num2str(ii)]),'Constant')
+                        InputDecomp = MergeStructs( obj.Input.(['Port',num2str(ii)]).(['Meas',num2str(jj)]), obj.Input.(['Port',num2str(ii)]).('Constant') );
+                    else
+                        InputDecomp = obj.Input.(['Port',num2str(ii)]).(['Meas',num2str(jj)]);
+                    end
+                    InputDecomp.f = obj.FreqVec;
+                    [P,Correction] = NPortAnalysis.WaveDecomposition(InputDecomp);
+                    subplot(obj.NrPorts,obj.NrMeas, (jj-1)*obj.NrMeas+ii);
+                    plot( InputDecomp.f,abs(P.Plus),'r');
+                    hold all
+                    plot( InputDecomp.f,abs(P.Min),'y');                                        
+                end
+            end
+            % Save each field of the scattering matrix in the ScatNPort.
+        end
         function displayScatMatrix(obj)
             if ~obj.InputChecked
                 error('The input has not been checked')
