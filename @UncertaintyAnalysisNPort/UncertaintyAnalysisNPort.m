@@ -59,7 +59,7 @@ classdef UncertaintyAnalysisNPort < MultiVariateAnalysis
                     for mm = 1:size(TotVar,1)
                         Theta = angle(ScatUV.Value(1,mm));
                         R = [cos(-Theta), -sin(-Theta); sin(-Theta), cos(-Theta)];
-                        AlignedUCMatrix = R*reshape(TotVar(mm,:),2,2)*transp(R);
+                        AlignedUCMatrix = R*reshape(TotVar(mm,:),2,2)*transpose(R);
                         AlignedVar(:,mm) = AlignedUCMatrix(:);
                     end
                     subplot(obj.ClassHandle.NrPorts,obj.ClassHandle.NrPorts, (ii - 1)*obj.ClassHandle.NrPorts + jj );
@@ -174,7 +174,7 @@ classdef UncertaintyAnalysisNPort < MultiVariateAnalysis
                     for mm = 1:size(TotVar,1)
                         Theta = angle(ScatUV.Value(1,mm));
                         R = [cos(-Theta), -sin(-Theta); sin(-Theta), cos(-Theta)];
-                        AlignedUCMatrix = R*reshape(TotVar(mm,:),2,2)*transp(R);
+                        AlignedUCMatrix = R*reshape(TotVar(mm,:),2,2)*transpose(R);
                         AlignedVar(ii,jj,:,mm) = AlignedUCMatrix(:);
                     end
                 end
