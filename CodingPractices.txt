@@ -1,0 +1,10 @@
+If the functions are frequency dependent, but the frequency is independent from any other parameter, calculations can be vectorized.
+The definition for these function is that the frequency corresponds to the first dimension of any variable, and the first dimension corresponds to the row number.
+
+
+Design rules classes
+-	Write a test function for each function in the class with the data either stand alone or incorporated in the class folder.
+-	
+
+Variable naming
+Full Capital letters of variables relate to user input or adjustable parameters
