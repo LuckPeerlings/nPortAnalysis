@@ -149,6 +149,7 @@ switch Model.Name
         end
         WaveNumber.Upstream = kUp ;
         WaveNumber.Downstream = kDown;    
+        
     case 'Acoubulence'         
         freqVec = f;
         radius = Model.r;
@@ -174,9 +175,9 @@ switch Model.Name
         assignin('base','alpha_wall_WideDuct', alpha_walls)
         alpha_fluid =0;% FluidLosses(omega,Prop);
 
-        WaveNumber.Upstream = k - 1i*alpha_fluid; %The conjugate is taken to be consistent with the definition used throughout the program.
-        WaveNumber.Downstream = k - 1i*alpha_fluid; 
-        
+        WaveNumber.Upstream = (k - 1i*alpha_fluid)./( 1-U./Prop.SpeedOfSound ); %The conjugate is taken to be consistent with the definition used throughout the program.
+        WaveNumber.Downstream = (k - 1i*alpha_fluid)./( 1+U./Prop.SpeedOfSound ); 
+                
     case 'RectangularDuct'
         a = Model.a;
         b = Model.b;
