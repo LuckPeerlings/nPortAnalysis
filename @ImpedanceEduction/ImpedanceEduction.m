@@ -1,3 +1,12 @@
+%TODO List
+
+%Create function that calculates the k_y for a given frequency and
+%admittance
+
+%Determine the resulting waves for a given impedance, using the
+%conservation of mass and momentum and create function to prove it.
+
+
 classdef ImpedanceEduction 
     %UNTITLED4 Summary of this class goes here
     %   Detailed explanation goes here
@@ -28,14 +37,14 @@ classdef ImpedanceEduction
             %found, corresponding to the cases n = 1,2,3,...
             
             %Initial values
-            Y_ac_Init = 1 +1i;
+            Y_ac_Init = 1+1i;
             M = 1e-4;
             k_x = 0;
             Omega_vec = linspace(1e-7,10,100)*2*pi;
             FluidProperties.SpeedOfSound = 343;
             FluidProperties.Density = 1.7;
             DuctHeight = 15e-3;
-            NrOfSteps = 100;
+            NrOfSteps = 1000;
             
             %Using two initial guesses
             InitialGuess_ky_0 = 0*pi/(2*DuctHeight);
@@ -315,8 +324,7 @@ classdef ImpedanceEduction
             %the wave with the flow correspond to the waves propagating
             %in the positive axial direction.
             %Which solution that is taken depends on the sign of the
-            %Mach-number
-            
+            %Mach-number            
             AxialWaveNumber_withFlow = k/(1-M^2)*(-M + sqrt(1 - (1-M^2)*(k_x^2/k^2+k_y^2/k^2)));
             AxialWaveNumber_AgainstFlow = k/(1-M^2)*(-M - sqrt(1 - (1-M^2)*(k_x^2/k^2+k_y^2/k^2)));
 
