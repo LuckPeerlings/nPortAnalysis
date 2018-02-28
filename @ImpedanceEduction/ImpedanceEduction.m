@@ -18,13 +18,55 @@ classdef ImpedanceEduction
     properties (SetAccess = private, GetAccess = public)
         %FluidProperties %Variable containing the properties of the fluid in the duct
         %Omega
-        %DuctHeigth
+        %DuctHeight
     end
     
     methods
 %         function ImpedanceEduction(obj)
 %             
 %         end
+
+        function TestTransversalWaveNumber2(obj)
+            
+            %Initial values
+            M = 0;
+            k_x = 0;
+            Omega_vec = linspace(100,2000,100)*2*pi;
+            FluidProperties.SpeedOfSound = 343;
+            FluidProperties.Density = 1.7;
+            DuctHeight = 15e-3;
+            NrOfSteps = 100;
+            
+            n = 0;
+            m = 0;
+            Solution_ky = pi/(4 * 2 * DuctHeight) + n * pi / (2 * DuctHeight);
+            
+            k = Omega_vec ./ FluidProperties.SpeedOfSound;
+            Y_ac = (1i .* (k - M * k_x) .^ 2) ./ (k .* Solution_ky * tan(2 * DuctHeight * Solution_ky));
+            
+            for ii = 1:length(Omega_vec)
+                ky(ii) = ImpedanceEduction.SolveTranversalWaveNumber(Y_ac(ii), m*pi/(2*DuctHeight), M, k_x, NrOfSteps, DuctHeight,Omega_vec(ii),FluidProperties);
+            end
+            
+            %Plotting the results
+            figure;
+            subplot(2,1,1); 
+                plot(Omega_vec/(2*pi),real(ky),'x');
+                hold all
+                plot(Omega_vec/(2*pi), Solution_ky * ones(size(Omega_vec)));
+                plot(Omega_vec/(2*pi), (Solution_ky - pi/(2*DuctHeight)) * ones(size(Omega_vec)));
+                plot(Omega_vec/(2*pi), (Solution_ky + pi/(2*DuctHeight)) * ones(size(Omega_vec)));
+                legend('Result of the calculation', 'Correct branch','Previous branch','Following branch')
+                xlabel('Frequency [Hz]')
+                ylabel('Real part of the wave number')
+                title('Transversal wavenumbers')
+            subplot(2,1,2);
+                plot(Omega_vec/(2*pi),imag(ky),'x');
+                hold all
+                plot(Omega_vec/(2*pi),0*ones(size(Omega_vec)));
+                xlabel('Frequency [Hz]')
+                ylabel('Imaginary part of the wave number')
+        end
         
         function TestTransversalWaveNumber(obj)    
             %Test function to determine the proper working if the
@@ -37,14 +79,14 @@ classdef ImpedanceEduction
             %found, corresponding to the cases n = 1,2,3,...
             
             %Initial values
-            Y_ac_Init = 1+1i;
-            M = 1e-4;
+            Y_ac_Init = 1.4 - 1i * 14;
+            M = 0.1;
             k_x = 0;
-            Omega_vec = linspace(1e-7,10,100)*2*pi;
+            Omega_vec = linspace(100,2000,100)*2*pi;
             FluidProperties.SpeedOfSound = 343;
             FluidProperties.Density = 1.7;
             DuctHeight = 15e-3;
-            NrOfSteps = 1000;
+            NrOfSteps = 100;
             
             %Using two initial guesses
             InitialGuess_ky_0 = 0*pi/(2*DuctHeight);
@@ -55,11 +97,14 @@ classdef ImpedanceEduction
             for ff = 1:length(Omega_vec)
                 %Only
                 if ff ~= 1
-                    NrOfSteps = 1;
+%                     NrOfSteps = 1;
                 end
                 k_y_0(ff) = ImpedanceEduction.SolveTranversalWaveNumber(Y_ac_Init, InitialGuess_ky_0, M, k_x, NrOfSteps, DuctHeight,Omega_vec(ff),FluidProperties);
                 k_y_1(ff) = ImpedanceEduction.SolveTranversalWaveNumber(Y_ac_Init, InitialGuess_ky_1, M, k_x, NrOfSteps, DuctHeight,Omega_vec(ff),FluidProperties);
                 k_y_2(ff) = ImpedanceEduction.SolveTranversalWaveNumber(Y_ac_Init, InitialGuess_ky_2, M, k_x, NrOfSteps, DuctHeight,Omega_vec(ff),FluidProperties);
+                InitialGuess_ky_0 = k_y_0(ff);
+                InitialGuess_ky_1 = k_y_1(ff);
+                InitialGuess_ky_2 = k_y_2(ff);
             end            
             %Plotting the results
             figure;
@@ -137,7 +182,7 @@ classdef ImpedanceEduction
             %    <-- P_min_a   |      <--- P_min_b    |   ---> P_min_c
             %--------------------------------------------------------------
             %                x=0                      x=L
-            %
+            %    
             %   /\ k_y
             %    |
             %k_x 0--> k_z
@@ -259,7 +304,7 @@ classdef ImpedanceEduction
             
         end
        
-        function Y_ac = SolveImpedance(InitialGuess_Y_ac, ky_Init, M, k_x, NrOfSteps, DuctHeigth,Omega,FluidProperties)
+        function Y_ac = SolveImpedance(InitialGuess_Y_ac, ky_Init, M, k_x, NrOfSteps, DuctHeight,Omega,FluidProperties)
             %This function solves the EigenValueEquation by taking a suitable
             %initial guess of the acoustic impedance and changing the
             %transversal wavenumber and Mach number to determine the acoustic impedance
@@ -272,14 +317,14 @@ classdef ImpedanceEduction
             %towards the final acoustic impedance and Mach Number
             Y_ac_vec(1) = InitialGuess_Y_ac;
             for ii  = 2:NrOfSteps
-                func = @(Y_ac) abs(ImpedanceEduction.EigenValueEquation(Y_ac,M_Vec(ii),k_x,ky_Vec(ii),DuctHeigth,Omega,FluidProperties));
+                func = @(Y_ac) abs(ImpedanceEduction.EigenValueEquation(Y_ac,M_Vec(ii),k_x,ky_Vec(ii),DuctHeight,Omega,FluidProperties));
                 Y_ac_vec(ii) = fsolve(func,Y_ac_vec(ii-1));
             end
             
             Y_ac =  Y_ac_vec(end);                
         end
         
-        function k_y = SolveTranversalWaveNumber(Y_ac_Init, InitialGuess_ky, M, k_x, NrOfSteps, DuctHeigth,Omega,FluidProperties)
+        function k_y = SolveTranversalWaveNumber(Y_ac, InitialGuess_ky, M, k_x, NrOfSteps, DuctHeight,Omega,FluidProperties)
             %This function solves the EigenValueEquation by taking a suitable
             %initial guess of the transversal wave number and changing the
             %impedance and Mach number to determine the transveral
@@ -291,14 +336,14 @@ classdef ImpedanceEduction
 
             %The stepping can have a logarithmic increase
             M_Vec = linspace(0,1,NrOfSteps).^(1/1)*M;
-            Y_Vec = linspace(0,1,NrOfSteps).^(1/1)*Y_ac_Init;
+            Y_Vec = linspace(0,1,NrOfSteps).^(1/1)*Y_ac;
             
             %Initialize the wavenumber vector in the y-direction and step
             %towards the final acoustic impedance and Mach Number
             k_y_vec(1) = InitialGuess_ky;
             options = optimoptions('fsolve','FiniteDifferenceType','Central','Display','Iter-detailed');
             for ii  = 1:NrOfSteps
-                func = @(k_y) ImpedanceEduction.EigenValueEquation(Y_Vec(ii),M_Vec(ii),k_x,k_y,DuctHeigth,Omega,FluidProperties);
+                func = @(k_y) ImpedanceEduction.EigenValueEquation(Y_Vec(ii),M_Vec(ii),k_x,k_y,DuctHeight,Omega,FluidProperties);
                 k_y_vec(ii+1) = fsolve(func,k_y_vec(ii),options);
             end            
             k_y = k_y_vec(end);                
