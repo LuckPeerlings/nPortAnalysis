@@ -43,7 +43,7 @@ classdef ImpedanceEduction
             
             k = Omega_vec ./ FluidProperties.SpeedOfSound;
             Y_ac = (1i .* (k - M * k_x) .^ 2) ./ (k .* Solution_ky * tan(2 * DuctHeight * Solution_ky));
-            
+
             for ii = 1:length(Omega_vec)
                 ky(ii) = ImpedanceEduction.SolveTranversalWaveNumber(Y_ac(ii), m*pi/(2*DuctHeight), M, k_x, NrOfSteps, DuctHeight,Omega_vec(ii),FluidProperties);
             end
@@ -82,52 +82,119 @@ classdef ImpedanceEduction
             Y_ac_Init = 1.4 - 1i * 14;
             M = 0.1;
             k_x = 0;
-            Omega_vec = linspace(100,2000,100)*2*pi;
+            Omega_vec = linspace(100,2000,200)*2*pi;
+            Omega = 128.6 * 2*pi;
             FluidProperties.SpeedOfSound = 343;
             FluidProperties.Density = 1.7;
             DuctHeight = 15e-3;
             NrOfSteps = 100;
             
             %Using two initial guesses
-            InitialGuess_ky_0 = 0*pi/(2*DuctHeight);
-            InitialGuess_ky_1 = 1*pi/(2*DuctHeight);
-            InitialGuess_ky_2 = 2*pi/(2*DuctHeight);
+            InitialGuess_ky_0 = 0*pi/(2*DuctHeight) + 1e-2 - 1i*1e-2;
+            InitialGuess_ky_1 = 1*pi/(2*DuctHeight) + 1e-2 - 1i*1e-2;
+            InitialGuess_ky_2 = 2*pi/(2*DuctHeight) + 1e-2 - 1i*1e-2;
             
-            %Solving the transversal wave numbers
-            for ff = 1:length(Omega_vec)
-                %Only
-                if ff ~= 1
-%                     NrOfSteps = 1;
-                end
-                k_y_0(ff) = ImpedanceEduction.SolveTranversalWaveNumber(Y_ac_Init, InitialGuess_ky_0, M, k_x, NrOfSteps, DuctHeight,Omega_vec(ff),FluidProperties);
-                k_y_1(ff) = ImpedanceEduction.SolveTranversalWaveNumber(Y_ac_Init, InitialGuess_ky_1, M, k_x, NrOfSteps, DuctHeight,Omega_vec(ff),FluidProperties);
-                k_y_2(ff) = ImpedanceEduction.SolveTranversalWaveNumber(Y_ac_Init, InitialGuess_ky_2, M, k_x, NrOfSteps, DuctHeight,Omega_vec(ff),FluidProperties);
-                InitialGuess_ky_0 = k_y_0(ff);
-                InitialGuess_ky_1 = k_y_1(ff);
-                InitialGuess_ky_2 = k_y_2(ff);
-            end            
-            %Plotting the results
+            StartFromBeginning = true; 
+            
+            
+%             %Solving the transversal wave numbers
+%             for ff = 1:length(Omega_vec)
+%                 %Only
+%                 if StartFromBeginning
+%                     InitialGuess_ky_0 = 0*pi/(2*DuctHeight) + 1e-2 - 1i * 1e-2;
+%                     InitialGuess_ky_1 = 1*pi/(2*DuctHeight) + 1e-2 - 1i * 1e-2;
+%                     InitialGuess_ky_2 = 2*pi/(2*DuctHeight) + 1e-2 - 1i * 1e-2;
+%                 else
+%                     if ff ~= 1
+%                          NrOfSteps = 1;
+%                     end
+%                 end
+%                 k_y_0(ff) = ImpedanceEduction.SolveTranversalWaveNumber(Y_ac_Init, InitialGuess_ky_0, M, k_x, NrOfSteps, DuctHeight,Omega_vec(ff),FluidProperties);
+%                 k_y_1(ff) = ImpedanceEduction.SolveTranversalWaveNumber(Y_ac_Init, InitialGuess_ky_1, M, k_x, NrOfSteps, DuctHeight,Omega_vec(ff),FluidProperties);
+%                 k_y_2(ff) = ImpedanceEduction.SolveTranversalWaveNumber(Y_ac_Init, InitialGuess_ky_2, M, k_x, NrOfSteps, DuctHeight,Omega_vec(ff),FluidProperties);
+%                 InitialGuess_ky_0 = k_y_0(ff);
+%                 InitialGuess_ky_1 = k_y_1(ff);
+%                 InitialGuess_ky_2 = k_y_2(ff);
+%             end            
+            
+            
+            if StartFromBeginning
+                InitialGuess_ky_0 = 0*pi/(2*DuctHeight) + 1e-2 + 1i * 1e-2;
+                InitialGuess_ky_1 = 1*pi/(2*DuctHeight) + 1e-2 + 1i * 1e-2;
+                InitialGuess_ky_2 = 2*pi/(2*DuctHeight) + 1e-2 + 1i * 1e-2;
+            else
+                NrOfSteps = 1;
+            end
+            
+            k_y_0_normal = ImpedanceEduction.SolveTranversalWaveNumber(Y_ac_Init, InitialGuess_ky_0, M, k_x, NrOfSteps, DuctHeight,Omega,FluidProperties);
+            k_y_1_normal = ImpedanceEduction.SolveTranversalWaveNumber(Y_ac_Init, InitialGuess_ky_1, M, k_x, NrOfSteps, DuctHeight,Omega,FluidProperties);
+            k_y_2_normal = ImpedanceEduction.SolveTranversalWaveNumber(Y_ac_Init, InitialGuess_ky_2, M, k_x, NrOfSteps, DuctHeight,Omega,FluidProperties);
+
+            InitialGuess_ky_0 = 0*pi/(2*DuctHeight) + 1 - 1i*1e-2;
+            InitialGuess_ky_1 = 1*pi/(2*DuctHeight) + 1 - 1i*1e-2;
+            InitialGuess_ky_2 = 2*pi/(2*DuctHeight) + 1 - 1i*1e-2;
+            
+            if StartFromBeginning
+                InitialGuess_ky_0 = 0*pi/(2*DuctHeight) + 1 - 1i * 1e-2;
+                InitialGuess_ky_1 = 1*pi/(2*DuctHeight) + 1 - 1i * 1e-2;
+                InitialGuess_ky_2 = 2*pi/(2*DuctHeight) + 1 - 1i * 1e-2;
+            else
+                NrOfSteps = 1;
+            end
+            
+            k_y_0_conjugated = ImpedanceEduction.SolveTranversalWaveNumber(Y_ac_Init, InitialGuess_ky_0, M, k_x, NrOfSteps, DuctHeight,Omega,FluidProperties);
+            k_y_1_conjugated = ImpedanceEduction.SolveTranversalWaveNumber(Y_ac_Init, InitialGuess_ky_1, M, k_x, NrOfSteps, DuctHeight,Omega,FluidProperties);
+            k_y_2_conjugated = ImpedanceEduction.SolveTranversalWaveNumber(Y_ac_Init, InitialGuess_ky_2, M, k_x, NrOfSteps, DuctHeight,Omega,FluidProperties);
+            
             figure;
-            subplot(2,1,1); 
-                plot(Omega_vec/(2*pi),real(k_y_0),'x');
-                hold all
-                plot(Omega_vec/(2*pi),real(k_y_1),'x');
-                plot(Omega_vec/(2*pi),real(k_y_2),'x');
-                n = 0; plot(Omega_vec/(2*pi),n*pi/(2*DuctHeight)*ones(size(Omega_vec)));
-                n = 1; plot(Omega_vec/(2*pi),n*pi/(2*DuctHeight)*ones(size(Omega_vec)));
-                n = 2; plot(Omega_vec/(2*pi),n*pi/(2*DuctHeight)*ones(size(Omega_vec)));
-                legend('Optimized value: Starting Value 0','Optimized value: Starting Value 1','Optimized value: Starting Value 2','Mode 0','Mode 1','Mode 2')
-                xlabel('Frequency [Hz]')
-                ylabel('Real part of the wave number')
-                title('Transversal wavenumbers')
+            subplot(2,1,1);
+            plot(real(k_y_0_normal),imag(k_y_0_normal),'x');
+            hold all
+            plot(real(k_y_1_normal),imag(k_y_1_normal),'x');
+            plot(real(k_y_2_normal),imag(k_y_2_normal),'x');
+            plot(linspace(-300, 300, 500), zeros(500))
+            plot(zeros(500), linspace(-2, 2, 500))
+            axis([-10 300 -2 2])
+            legend('Mode 0','Mode 1','Mode 2')
+            xlabel('Real part of ky')
+            ylabel('Imaginary part of ky')
+            title('Transversal wavenumber at each iteration (normal)')
             subplot(2,1,2);
-                plot(Omega_vec/(2*pi),imag(k_y_0),'x');
-                hold all
-                plot(Omega_vec/(2*pi),imag(k_y_1),'x');
-                plot(Omega_vec/(2*pi),imag(k_y_2),'x');
-                plot(Omega_vec/(2*pi),0*ones(size(Omega_vec)));
-                xlabel('Frequency [Hz]')
-                ylabel('Imaginary part of the wave number')
+            plot(real(k_y_0_conjugated),imag(k_y_0_conjugated),'x');
+            hold all
+            plot(real(k_y_1_conjugated),imag(k_y_1_conjugated),'x');
+            plot(real(k_y_2_conjugated),imag(k_y_2_conjugated),'x');
+            plot(linspace(-300, 300, 500), zeros(500))
+            plot(zeros(500), linspace(-2, 2, 500))
+            axis([-10 300 -2 2])
+            legend('Mode 0','Mode 1','Mode 2')
+            xlabel('Real part of ky')
+            ylabel('Imaginary part of ky')
+            title('Transversal wavenumber at each iteration at (conjugated)')
+            
+            
+%             %Plotting the results
+%             figure;
+%             subplot(2,1,1); 
+%                 plot(Omega_vec/(2*pi),real(k_y_0),'x');
+%                 hold all
+%                 plot(Omega_vec/(2*pi),real(k_y_1),'x');
+%                 plot(Omega_vec/(2*pi),real(k_y_2),'x');
+%                 n = 0; plot(Omega_vec/(2*pi),n*pi/(2*DuctHeight)*ones(size(Omega_vec)));
+%                 n = 1; plot(Omega_vec/(2*pi),n*pi/(2*DuctHeight)*ones(size(Omega_vec)));
+%                 n = 2; plot(Omega_vec/(2*pi),n*pi/(2*DuctHeight)*ones(size(Omega_vec)));
+%                 legend('Optimized value: Starting Value 0','Optimized value: Starting Value 1','Optimized value: Starting Value 2','Mode 0','Mode 1','Mode 2')
+%                 xlabel('Frequency [Hz]')
+%                 ylabel('Real part of the wave number')
+%                 title('Transversal wavenumbers')
+%             subplot(2,1,2);
+%                 plot(Omega_vec/(2*pi),imag(k_y_0),'x');
+%                 hold all
+%                 plot(Omega_vec/(2*pi),imag(k_y_1),'x');
+%                 plot(Omega_vec/(2*pi),imag(k_y_2),'x');
+%                 plot(Omega_vec/(2*pi),0*ones(size(Omega_vec)));
+%                 xlabel('Frequency [Hz]')
+%                 ylabel('Imaginary part of the wave number')
         end
         
         function TestModeMatching(obj)
@@ -346,7 +413,8 @@ classdef ImpedanceEduction
                 func = @(k_y) ImpedanceEduction.EigenValueEquation(Y_Vec(ii),M_Vec(ii),k_x,k_y,DuctHeight,Omega,FluidProperties);
                 k_y_vec(ii+1) = fsolve(func,k_y_vec(ii),options);
             end            
-            k_y = k_y_vec(end);                
+%             k_y = k_y_vec(end);
+            k_y = k_y_vec;
         end
         
         function Res = EigenValueEquation(Y_ac,M,k_x,k_y,DuctHeight,Omega,FluidProperties)
