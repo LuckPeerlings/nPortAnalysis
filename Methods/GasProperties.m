@@ -37,6 +37,37 @@ function Properties = GasProperties( Input )
 switch Input.GasName
     case 'Air'
         Properties = AirProperties(Input);
+    case 'PressurizedAir'
+        pars = inputParser;   %Create a parser object
+        DEFAULT.p = 101325;   %Default Pressure
+        DEFAULT.t = 20;       %Default temperature   
+        DEFAULT.h = 0;        %Default relative humidity
+        DEFAULT.x_c = 393.2e-9; %Default content of CO2 in air.
+        DEFAULT.GetOutput = false;  %Default value of the GetOutput flag
+
+        % The available arguments and their check function
+        addParameter(pars,'t',DEFAULT.t)
+        addParameter(pars,'p',DEFAULT.p)
+        addParameter(pars,'RH',DEFAULT.h)
+        addParameter(pars,'Xc',DEFAULT.x_c)
+        addParameter(pars,'GetOutput',DEFAULT.GetOutput)
+
+        % The following inputs are not used (these are the errors when using the
+        % sensitivity analysis and have a prefix of err_) and the indentifier for the specified gas (GasName).
+        % One could parse all inputs, however if a variable is misspelled it will
+        % not be seen by the parser and not used in the calcalation.
+        addParameter(pars,'GasName',char.empty)
+        %Parsing of the arguments
+        parse(pars,Input);
+        
+        %Assigning the parsed arguments to their variables
+        Input.p = pars.Results.p;
+        Input.t = pars.Results.t;
+        Input.h = pars.Results.RH;
+        Input.x_c = pars.Results.Xc;
+        
+        Properties.SpeedOfSound = sqrt(1.4.*R.*Input.t+273.15);
+        Properties.Density = (Input.t+273.15)*R;
     case 'ComsolAir'
         T = 293.15;
         R = 287;
