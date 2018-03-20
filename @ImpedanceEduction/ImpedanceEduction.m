@@ -244,10 +244,117 @@ classdef ImpedanceEduction
                               
             end
         end
+        
+        function TestModeMatching2(obj)
+            
+            P_plus_a = 1;
+            P_plus_c = 0.1;
+            DuctHeight = 1e-1;
+            LinerLength = 5e-1;
+            Omega = 940 *2*pi;
+            MachNumber = 0.3;
+            FluidProperties.SpeedOfSound = 343;
+            FluidProperties.Density = 1.7;
+            NrModes = 1;
+            NrOfSteps_WaveNumberCalculation = 100;
+            Y_ac_Init = 1.4 + 1i * 14;
+            
+            [Amplitudes, k_y_HardWalledSec, k_y_LinedSec] = ImpedanceEduction.ModeMatching(P_plus_a,P_plus_c,DuctHeight,LinerLength,Omega,MachNumber,FluidProperties,NrModes,NrOfSteps_WaveNumberCalculation,Y_ac_Init);
+            
+            
+            k_x = 0;
+            k = Omega/FluidProperties.SpeedOfSound;
+            
+            P_a_plus = ones(NrModes)*P_plus_a;
+            P_c_plus = ones(NrModes)*P_plus_c;
+            
+            y = linspace(0, DuctHeight, 5);
+            
+            for mm = 1:NrModes
+                [k_z_HardWalledSec_1, k_z_HardWalledSec_2] = ImpedanceEduction.AxialWaveNumber(MachNumber,k,k_x,k_y_HardWalledSec);
+                [k_z_LinedSec_1, k_z_LinedSec_2] = ImpedanceEduction.AxialWaveNumber(MachNumber,k,k_x,k_y_LinedSec);
+            end
+            
+            
+            for mm = 1:NrModes
+                P_a_minus(mm) = Amplitudes((mm-1)*4 + 1);
+                P_c_minus(mm) = Amplitudes((mm-1)*4 + 2);
+                P_b_plus(mm) = Amplitudes((mm-1)*4 + 3);
+                P_b_minus(mm) = Amplitudes((mm-1)*4 + 4);
+            end
+            
+            for nn = 1:length(y)
+                P_a_0(nn) = 0;
+                P_b_0(nn) = 0;
+                P_b_L(nn) = 0;
+                P_c_L(nn) = 0;
+                dP_a_0(nn) = 0;
+                dP_b_0(nn) = 0;
+                dP_b_L(nn) = 0;
+                dP_c_L(nn) = 0;
+                
+                for mm = 1:NrModes
+                    
+                    P_a_0(nn) = P_a_0(nn)...
+                        + cos(k_y_HardWalledSec(mm) * y(nn)) * (P_a_plus(mm) + P_a_minus(mm));
+                    
+                    P_b_0(nn) = P_b_0(nn)...
+                        + cos(k_y_LinedSec(mm) * y(nn)) * (P_b_plus(mm) + P_b_minus(mm));
+                    
+                    
+                    
+                    P_b_L(nn) = P_b_L(nn)...
+                        + cos(k_y_LinedSec(mm)*y(nn))...
+                        * (P_b_plus(mm) * exp(-1i * k_z_LinedSec_1(mm) * LinerLength)...
+                        + P_b_minus(mm) * exp(-1i * k_z_LinedSec_2(mm) * LinerLength));
+                    
+                    P_c_L(nn) = P_c_L(nn)...
+                        + cos(k_y_HardWalledSec(mm) * y(nn))...
+                        * (P_c_minus(mm) * exp(-1i * k_z_HardWalledSec_1(mm) * LinerLength)...
+                        + P_c_plus(mm) * exp(-1i * k_z_HardWalledSec_2(mm) * LinerLength));
+                    
+                    
+                    
+                    dP_a_0(nn) = dP_a_0(nn)...
+                        - 1i * cos(k_y_HardWalledSec(mm) * y(nn))...
+                        * (k_z_HardWalledSec_1(mm) * P_a_plus(mm)...
+                        + k_z_HardWalledSec_2(mm) * P_a_minus(mm));
+                    
+                    dP_b_0(nn) = dP_b_0(nn)...
+                        - 1i * cos(k_y_LinedSec(mm) * y(nn))...
+                        * (k_z_LinedSec_1(mm) * P_b_plus(mm)...
+                        + k_z_LinedSec_2(mm) * P_b_minus(mm));
+
+                    
+                    
+                    dP_b_L(nn) = dP_b_L(nn)...
+                        - 1i * cos(k_y_LinedSec(mm) * y(nn))...
+                        * (k_z_LinedSec_1(mm) * P_b_plus(mm) * exp(-1i * k_z_LinedSec_1(mm) * LinerLength)...
+                        + k_z_LinedSec_2(mm) * P_b_minus(mm) * exp(-1i * k_z_LinedSec_2(mm) * LinerLength));
+                    
+                    dP_c_L(nn) = dP_c_L(nn)...
+                        - 1i * cos(k_y_HardWalledSec(mm) * y(nn))...
+                        * (k_z_HardWalledSec_1(mm) * P_c_minus(mm) * exp(-1i * k_z_HardWalledSec_1(mm) * LinerLength)...
+                        + k_z_HardWalledSec_2(mm) * P_c_plus(mm) * exp(-1i * k_z_HardWalledSec_2(mm) * LinerLength));
+                
+                end
+            end
+            
+            error_1 = mean(abs(P_a_0 - P_b_0));
+            error_2 = mean(abs(P_b_L - P_c_L));
+            error_3 = mean(abs(dP_a_0 - dP_b_0));
+            error_4 = mean(abs(dP_b_L - dP_c_L));
+
+            disp(error_1)
+            disp(error_2)
+            disp(error_3)
+            disp(error_4)
+            
+        end
     end
     
     methods(Static)
-        function [Amplitudes] = ModeMatching(P_plus_a,P_plus_c,DuctHeight,LinerLength,Omega,MachNumber,FluidProperties,NrModes,NrOfSteps_WaveNumberCalculation,Y_ac_Init)
+        function [Amplitudes, k_y_HardWalledSec, k_y_LinedSec] = ModeMatching(P_plus_a,P_plus_c,DuctHeight,LinerLength,Omega,MachNumber,FluidProperties,NrModes,NrOfSteps_WaveNumberCalculation,Y_ac_Init)
             if LinerLength <= 0
                 warning('Negative or zero liner length, setting liner length to 1e-6m');
                 LinerLength = 1e-6;
@@ -285,9 +392,9 @@ classdef ImpedanceEduction
             for nn = 1:NrModes
                 k_y_HardWalledSec(nn) = pi*(nn-1)/(DuctHeight);
             end
-            %Calculate the transveral wave numbers of the M-modes in the lined section; 
-            for mm = 1:NrModes
-                k_y_LinedSec(mm) = ImpedanceEduction.SolveTranversalWaveNumber(Y_ac_Init, (mm-1)*pi/(DuctHeight), MachNumber, K_X_Plane, NrOfSteps_WaveNumberCalculation, DuctHeight,Omega,FluidProperties);
+            %Calculate the transveral wave numbers of the N-modes in the lined section; 
+            for nn = 1:NrModes
+                k_y_LinedSec(nn) = ImpedanceEduction.SolveTranversalWaveNumber(Y_ac_Init, (nn-1)*pi/(DuctHeight), MachNumber, K_X_Plane, NrOfSteps_WaveNumberCalculation, DuctHeight,Omega,FluidProperties);
             end
             
             %Calculate the axial wave-numbers in the hardwalled section and
@@ -431,8 +538,8 @@ classdef ImpedanceEduction
                 func = @(k_y) ImpedanceEduction.EigenValueEquation(Y_Vec(ii),M_Vec(ii),k_x,k_y,DuctHeight,Omega,FluidProperties);
                 k_y_vec(ii+1) = fsolve(func,k_y_vec(ii),options);
             end            
-%             k_y = k_y_vec(end);
-            k_y = k_y_vec;
+            k_y = k_y_vec(end);
+%             k_y = k_y_vec;
         end
         
         function Res = EigenValueEquation(Y_ac,M,k_x,k_y,DuctHeight,Omega,FluidProperties)
