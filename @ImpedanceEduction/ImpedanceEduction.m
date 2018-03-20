@@ -147,6 +147,24 @@ classdef ImpedanceEduction
             k_y_2_conjugated = ImpedanceEduction.SolveTranversalWaveNumber(Y_ac_Init, InitialGuess_ky_2, M, k_x, NrOfSteps, DuctHeight,Omega,FluidProperties);
             
             figure;
+            [Re_ky, Im_ky] = meshgrid(linspace(0,200,500),linspace(-50,50,500));
+            Res = ImpedanceEduction.EigenValueEquation(Y_ac_Init,M,0,Re_ky + 1i.*Im_ky,DuctHeight,Omega,FluidProperties);
+             PhasePlot(Re_ky+1i*Im_ky, Res,'c');
+            figure;
+            [Re_ky, Im_ky] = meshgrid(linspace(140,180,500),linspace(-10,10,500));
+            Res = ImpedanceEduction.EigenValueEquation(Y_ac_Init,M,0,Re_ky + 1i.*Im_ky,DuctHeight,Omega,FluidProperties);
+            surf(Re_ky, Im_ky, abs(Res));
+                         figure;
+             PhasePlot(Re_ky+1i*Im_ky, Res,'c');
+             
+            figure;
+            [Re_ky, Im_ky] = meshgrid(linspace(157.06,157.1,500),linspace(-0.002,0.002,500));
+            Res = ImpedanceEduction.EigenValueEquation(Y_ac_Init,M,0,Re_ky + 1i.*Im_ky,DuctHeight,Omega,FluidProperties);
+            
+            figure;
+            PhasePlot(Re_ky+1i*Im_ky, Res.^2,'c');
+             
+            figure;
             subplot(2,1,1);
             plot(real(k_y_0_normal),imag(k_y_0_normal),'x');
             hold all
@@ -420,10 +438,11 @@ classdef ImpedanceEduction
         function Res = EigenValueEquation(Y_ac,M,k_x,k_y,DuctHeight,Omega,FluidProperties)
             %The eigenvalue equation that has to be solved to obtain the
             %wavenumbers or acoustic impedance
-            k0 = Omega/FluidProperties.SpeedOfSound;
+            k0 = Omega./FluidProperties.SpeedOfSound;
             [AxialWaveNumber_withFlow,~] = ImpedanceEduction.AxialWaveNumber(M,k0,k_x,k_y);
-            Res = k_y*tan(2*k_y*DuctHeight) - 1i*FluidProperties.Density*FluidProperties.SpeedOfSound^2*Y_ac/Omega *(k0-M*AxialWaveNumber_withFlow)^2;
-            Res = k_y*tan(2*k_y*DuctHeight) - 1i*FluidProperties.Density*Omega*Y_ac *(1-M*AxialWaveNumber_withFlow/k0)^2;
+            Res = k_y.*tan(2.*k_y.*DuctHeight) - 1i*FluidProperties.Density.*FluidProperties.SpeedOfSound.^2.*Y_ac./Omega.*(k0-M.*AxialWaveNumber_withFlow).^2;
+            Res = k_y.*tan(2.*k_y.*DuctHeight) - 1i*FluidProperties.Density.*Omega.*Y_ac.*(1-M.*AxialWaveNumber_withFlow./k0).^2;
+            Res = k_y.*sin(2.*k_y.*DuctHeight) - 1i*FluidProperties.Density.*Omega.*Y_ac.*(1-M.*AxialWaveNumber_withFlow./k0).^2.*cos(2.*k_y.*DuctHeight);
         end     
         
         function [AxialWaveNumber_withFlow,AxialWaveNumber_AgainstFlow] = AxialWaveNumber(M,k,k_x,k_y)
@@ -438,8 +457,8 @@ classdef ImpedanceEduction
             %in the positive axial direction.
             %Which solution that is taken depends on the sign of the
             %Mach-number            
-            AxialWaveNumber_withFlow = k/(1-M^2)*(-M + sqrt(1 - (1-M^2)*(k_x^2/k^2+k_y^2/k^2)));
-            AxialWaveNumber_AgainstFlow = k/(1-M^2)*(-M - sqrt(1 - (1-M^2)*(k_x^2/k^2+k_y^2/k^2)));
+            AxialWaveNumber_withFlow = k./(1-M.^2).*(-M + sqrt(1 - (1-M.^2).*(k_x.^2./k.^2+k_y.^2./k.^2)));
+            AxialWaveNumber_AgainstFlow = k./(1-M.^2).*(-M - sqrt(1 - (1-M.^2).*(k_x.^2./k.^2+k_y.^2./k.^2)));
 
         end
     end
