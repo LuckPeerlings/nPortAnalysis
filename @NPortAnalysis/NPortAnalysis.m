@@ -276,6 +276,21 @@ classdef NPortAnalysis  < matlab.mixin.SetGet
             end
             % Save each field of the scattering matrix in the ScatNPort.
         end
+        
+        function displayTransmissionLoss(obj)
+            if ~obj.InputChecked
+                error('The input has not been checked')
+            end
+            
+            figure;
+            for ii = 1:obj.NrPorts
+                for jj = 1:obj.NrPorts
+                    subplot(obj.NrPorts,obj.NrPorts, (ii - 1)*obj.NrPorts + jj )
+                    plot(obj.FreqVec, 20*log10(abs( obj.ScatNPort.(['S',num2str(ii),num2str(jj)]) )))
+                end
+            end
+        end 
+        
         function displayScatMatrix(obj)
             if ~obj.InputChecked
                 error('The input has not been checked')
@@ -343,6 +358,7 @@ classdef NPortAnalysis  < matlab.mixin.SetGet
             fclose(fileID);
         end        
     end
+    
     methods (Static)
         WaveDecomposition_chk(varargin)
         [P,Correction] = WaveDecomposition(varargin)
