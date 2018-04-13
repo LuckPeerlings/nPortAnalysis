@@ -14,7 +14,6 @@ classdef PronyMethod < handle
         Amplitude
         kappa
         Parameter
-        noise
     end
     
     methods
@@ -25,7 +24,6 @@ classdef PronyMethod < handle
             obj.dX = dX;
             obj.NrModes = NrModes;
             obj.Parameter = Parameter;
-            obj.noise = noise;
         end
         
         function obj = DetermineImpedance(obj)
@@ -86,30 +84,51 @@ classdef PronyMethod < handle
         function TestClass(obj)
             %Function to determine whether the prony method is implemented
             %correctly
-            NrModes = 50;
-            MicSpacing = 0.01;
-            X = 0:MicSpacing:1-MicSpacing;
+            NrModes = 6;
+            MicSpacing = 1;
+            X = 0:MicSpacing:11; %1-MicSpacing; %0.15
             %The wavenumbers have to be large enough that there is a
             %variation accross the microphones
             
             %The wavenumbers are be sorted using the size of the absolute
             %value.
-            k = [5+5i,4+4i,2+1i,1]*10; %,2+1i,1
-            A = [15+9i,10-8i,9+6i,5-5i]; %,2+2i,1-1i
+%             k = [7, 21, 200, 201, 53, 1000] * (1i / 1000); %[2+1i,1+2i,5+4i,3,6i, 1.5+1.5i]*10;
+            A = [1,2,3,4,5,6]; %[15+9i,10-8i,2+2i,1-1i,-5+4i,-6-6i]; %,2+2i,1-1i
+            z = [0.9856-0.1628i, 0.9856+0.1628i, 0.8976-0.4305i, 0.8976+0.4305i, 0.8127-0.5690, 0.8127+0.5690];
+            k = -1i * log(z) / MicSpacing;
             
-            noise = obj.noise;
+            noise = PronyMethod.Noise(length(X),(0.5+0.3i));
             
             %Determine pressure with the above exponentials
+            Pressure = zeros(1,length(X));
+            for ii = 1:length(k) %NrModes
+                Pressure = Pressure + A(ii) * exp(1i * k(ii) * X);
+            end
+%             Pressure = Pressure + noise;
             
-            Pressure = A(1)*exp(1i*k(1)*X) + A(2)*exp(1i*k(2)*X) + A(3)*exp(1i*k(3)*X) + A(4)*exp(1i*k(4)*X) + (1 + 1i) * noise; %(20 + 20i) * rand(1, length(X)) ;
             if strcmp(obj.Parameter, 'Normal')
 %                 [C, kappa] = obj.PronyCoefficients(Pressure,MicSpacing,NrModes);
-                [C, kappa] = obj.MatrixPencil(Pressure, MicSpacing, NrModes, NrModes);
+                [C, kappa] = obj.MatrixPencil(Pressure, MicSpacing, NrModes);
             elseif strcmp(obj.Parameter, 'Improved')
                 [C, kappa] = obj.PronyCoefficientsImproved(Pressure,MicSpacing,NrModes);
             elseif strcmp(obj.Parameter, 'Improved_2')
                 [C, kappa] = obj.PronyCoefficientsImproved_2(Pressure,MicSpacing,NrModes);
             end
+            
+            error_k = max(abs(1i * MicSpacing * k(1:min([length(k), NrModes, length(kappa)])) - 1i * MicSpacing * kappa)) / max(abs(k));
+            error_c = max(abs(A(1:min([length(A), NrModes, length(C)])) - transpose(C))) / max(abs(A));
+            
+            h = 0;
+            for ii = 1:min([NrModes, length(kappa)])
+                h = h + C(ii) * exp(1i * kappa(ii) * X);
+            end
+            
+            error_h = max(abs(Pressure - h)) / max(abs(Pressure));
+            
+            disp(error_k)
+            disp(error_c)
+            disp(error_h)
+            
             
             %Sort the modes by amplitude
             figure
@@ -310,7 +329,7 @@ classdef PronyMethod < handle
             kappa=kappa(I);
         end
         
-        function [Amplitudes, kappa] = MatrixPencil(P, dX, L, M)
+        function [Amplitudes, kappa] = MatrixPencil(P, dX, L)
             % L = number of modes that are calculated
             % M = number of modes we look at
             
@@ -321,13 +340,41 @@ classdef PronyMethod < handle
                 error('The number of modes must be superior or equal to 3')
             end
             
-            H_s0 = PronyMethod.HankelProny(2*N-L, L, 0, P);
-            H_s1 = PronyMethod.HankelProny(2*N-L, L, 1, P);
+%             H_s0 = PronyMethod.HankelProny(2*N-L, L, 0, P);
+%             H_s1 = PronyMethod.HankelProny(2*N-L, L, 1, P);
             
-            Z = eig(H_s1, H_s0);
-%             [HH_s1, HH_s0, Q, R] = qz(H_s1, H_s0);
-%             [AAS,BBS,QS,RS] = ordqz(HH_s1, HH_s0, Q, R,'udo');
-%             Z = ordeig(AAS, BBS);
+            H = PronyMethod.HankelProny(2*N-L, L+1, 0, P);
+            
+            [Q, R, MPi] = qr(H);
+            
+            M = 1;
+            epsilon = 1e-10;
+            Rabs = abs(R);
+            [size_1, size_2] = size(Rabs);
+            for ii = 1:min(size_1, size_2)-1
+                if Rabs(M+1, M+1) > epsilon * Rabs(1, 1)
+                    if M < L
+                        M = M+1;
+                    end
+                end
+            end
+            
+            S = R * transpose(MPi);
+            
+%             S_0 = PronyMethod.Matrix_S(S, L, 0);
+%             S_1 = PronyMethod.Matrix_S(S, L, 1);
+            
+            T_s0 = PronyMethod.Matrix_T(S, M, L, 0);
+            T_s1 = PronyMethod.Matrix_T(S, M, L, 1);
+            
+            D = diag(diag(R(1:M, 1:M)));
+            
+            T_s0 = pinv(D) * T_s0;
+            T_s1 = pinv(D) * T_s1;
+            
+            F = pinv(transpose(T_s0)) * transpose(T_s1);
+            
+            Z = eig(F);
             
             if length(Z) < M
                 disp('There are less eigenvalues than modes')
@@ -335,29 +382,22 @@ classdef PronyMethod < handle
                 disp('There are more eigenvalues than modes')
             end
             
-%             [ZZ, I] = sort(abs(Z), 'descend');
             f_i = log(Z);
             
-%             Z(1:4) = [5+5i,4+4i,2+1i,1]*10;
-%             Z = Z(I);
-            
             V = PronyMethod.VandermondeProny(2*N, Z);
-%             V = Z.^(0:M-1); %(2*N-1));
-%             V = transpose(V);
             
             C = V \ transpose(P);
-%             C = pinv(V) * transpose(P(1:M+1));
+            
             Amplitudes = C;
-            [C,I] = sort(abs(C),'descend');
+            [C,I] = sort(abs(C),'ascend');
             Amplitudes = Amplitudes(I);
             
-            disp(V * C - transpose(P));
             
             for ii = 1:length(f_i)
                 kappa(ii) = -1i * f_i(ii) / dX;
             end
             
-%             kappa = kappa(I);
+            kappa = kappa(I);
             
         end
         
@@ -392,6 +432,24 @@ classdef PronyMethod < handle
                     V(ii, :) = Z(:) .^ (ii - 1);
             end
         end
+        
+        function T = Matrix_T(S, M, L, s)
+            T = S(1:M, (1+s):(L+s));
+        end
+        
+        function S_1 = Matrix_S(S_0, L, s)
+            S_1 = S_0(1:length(S_0(:,1)), (1+s):(L+s));
+        end
+        
+        function noise = Noise(Length, Amplitude)
+            noise_real = randn(1, Length);
+            noise_imag = randn(1, Length);
+            noise_real = noise_real / max(noise_real);
+            noise_imag = noise_imag / max(noise_imag);
+            noise = noise_real + 1i * noise_imag;
+            noise = Amplitude * noise;
+        end
+        
     end
     
 end
