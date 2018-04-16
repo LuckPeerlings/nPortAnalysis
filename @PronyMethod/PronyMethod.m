@@ -84,18 +84,18 @@ classdef PronyMethod < handle
         function TestClass(obj)
             %Function to determine whether the prony method is implemented
             %correctly
-            NrModes = 6;
+            NrModes = 20;
             MicSpacing = 1;
-            X = 0:MicSpacing:11; %1-MicSpacing; %0.15
+            X = 0:MicSpacing:39; %1-MicSpacing; %0.15
             %The wavenumbers have to be large enough that there is a
             %variation accross the microphones
             
             %The wavenumbers are be sorted using the size of the absolute
             %value.
-%             k = [7, 21, 200, 201, 53, 1000] * (1i / 1000); %[2+1i,1+2i,5+4i,3,6i, 1.5+1.5i]*10;
-            A = [1,2,3,4,5,6]; %[15+9i,10-8i,2+2i,1-1i,-5+4i,-6-6i]; %,2+2i,1-1i
-            z = [0.9856-0.1628i, 0.9856+0.1628i, 0.8976-0.4305i, 0.8976+0.4305i, 0.8127-0.5690, 0.8127+0.5690];
-            k = -1i * log(z) / MicSpacing;
+            f = [7, 21, 200, 201, 53, 1000] * (1i / 1000); %[2+1i,1+2i,5+4i,3,6i, 1.5+1.5i]*10;
+            A = [6,5,4,3,2,1]; %[15+9i,10-8i,2+2i,1-1i,-5+4i,-6-6i]; %,2+2i,1-1i
+%             z = [0.9856-0.1628i, 0.9856+0.1628i, 0.8976-0.4305i, 0.8976+0.4305i, 0.8127-0.5690, 0.8127+0.5690];
+            k = -1i * f / MicSpacing;
             
             noise = PronyMethod.Noise(length(X),(0.5+0.3i));
             
@@ -108,15 +108,17 @@ classdef PronyMethod < handle
             
             if strcmp(obj.Parameter, 'Normal')
 %                 [C, kappa] = obj.PronyCoefficients(Pressure,MicSpacing,NrModes);
-                [C, kappa] = obj.MatrixPencil(Pressure, MicSpacing, NrModes);
+%                 [C, kappa] = obj.MatrixPencil(Pressure, MicSpacing, NrModes);
+%                 [C, kappa] = obj.MyLittleProny(Pressure, MicSpacing, NrModes, 1e-10);
+                [C, kappa] = obj.ESPRIT(Pressure, MicSpacing, NrModes, 1e-10);
             elseif strcmp(obj.Parameter, 'Improved')
                 [C, kappa] = obj.PronyCoefficientsImproved(Pressure,MicSpacing,NrModes);
             elseif strcmp(obj.Parameter, 'Improved_2')
                 [C, kappa] = obj.PronyCoefficientsImproved_2(Pressure,MicSpacing,NrModes);
             end
             
-            error_k = max(abs(1i * MicSpacing * k(1:min([length(k), NrModes, length(kappa)])) - 1i * MicSpacing * kappa)) / max(abs(k));
-            error_c = max(abs(A(1:min([length(A), NrModes, length(C)])) - transpose(C))) / max(abs(A));
+            error_k = max(abs(1i * MicSpacing * k(1:min([length(k), NrModes, length(kappa)])) - 1i * MicSpacing * kappa(1:min([length(k), NrModes, length(kappa)])))) / max(abs(k));
+            error_c = max(abs(A(1:min([length(A), NrModes, length(C)])) - transpose(C(1:min([length(A), NrModes, length(C)]))))) / max(abs(A));
             
             h = 0;
             for ii = 1:min([NrModes, length(kappa)])
@@ -392,6 +394,112 @@ classdef PronyMethod < handle
             [C,I] = sort(abs(C),'ascend');
             Amplitudes = Amplitudes(I);
             
+            
+            for ii = 1:length(f_i)
+                kappa(ii) = -1i * f_i(ii) / dX;
+            end
+            
+            kappa = kappa(I);
+            
+        end
+        
+        function [Amplitudes, kappa] = MyLittleProny(P, dX, L, epsilon)
+            % L = number of modes that are calculated
+            
+            N = length(P)/2;
+            if L > N
+                error('The number of modes can not exceed the half of the measurement points')
+            end
+            
+            H = PronyMethod.HankelProny(2*N-L, L, 0, P);
+            
+            h = zeros(2*N-L, 1);
+            for ii = 1:length(h)
+                h(ii) = -P(ii+L);
+            end
+            
+            q = H\h;
+            
+            Z_0 = roots(q);
+            
+            V_0 = PronyMethod.VandermondeProny(2*N, Z_0);
+            
+            C_0 = V_0\transpose(P);
+            
+            index = [];
+            for ii = 1:length(C_0)
+                if C_0(ii) > epsilon
+                    index = [index, ii];
+                end
+            end
+            
+            Z_1 = Z_0(index);
+            
+            V_1 = PronyMethod.VandermondeProny(2*N, Z_1);
+            
+            C_1 = V_1\transpose(P);
+            
+            f_i = log(Z_1);
+            
+            Amplitudes = C_1;
+            [C_1,I] = sort(abs(C_1),'ascend');
+            Amplitudes = Amplitudes(I);
+            
+            for ii = 1:length(f_i)
+                kappa(ii) = -1i * f_i(ii) / dX;
+            end
+            
+            kappa = kappa(I);
+            
+        end
+        
+        function [Amplitudes, kappa] = ESPRIT(P, dX, L, epsilon)
+            % L = number of modes that are calculated
+            
+            N = length(P)/2;
+            if L > N
+                error('The number of modes can not exceed the half of the measurement points')
+            end
+            
+            H = PronyMethod.HankelProny(2*N-L, L+1, 0, P);
+            
+            [U, D, W] = svd(H);
+            
+            W = ctranspose(W);
+            
+            sigma = diag(D);
+            a = [];
+            
+            for ii = 2:length(sigma)
+                if sigma(ii) < epsilon * sigma(1)
+                    a = [a, ii];
+                end
+            end
+            
+            if isempty(a) == 1
+                M = length(sigma);
+            else
+                M = a(1);
+            end 
+            
+            W_rect = W(1:M, 1:L+1);
+            
+            W_0 = W_rect(1:M, 1:L);
+            W_1 = W_rect(1:M, 2:L+1);
+            
+            F = pinv(transpose(W_0)) * transpose(W_1);
+            
+            Z = eig(F);
+            
+            V = PronyMethod.VandermondeProny(2*N, Z);
+            
+            C = V\transpose(P);
+            
+            f_i = log(Z);
+            
+            Amplitudes = C;
+            [C,I] = sort(abs(C),'descend');
+            Amplitudes = Amplitudes(I);
             
             for ii = 1:length(f_i)
                 kappa(ii) = -1i * f_i(ii) / dX;
