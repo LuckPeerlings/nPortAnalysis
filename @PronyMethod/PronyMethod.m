@@ -36,7 +36,10 @@ classdef PronyMethod < handle
                 obj.MicSpacing = MicSpacing;
                 obj.NrModes = NrModes;
                 obj.Parameter = Parameter;
+            elseif nargin == 1
+                obj.TestFunctionNicolas
             else
+                
                 obj.TestClass;
             end
         end
