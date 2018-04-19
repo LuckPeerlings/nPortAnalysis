@@ -126,9 +126,9 @@ classdef PronyMethod < handle
             
             [C, kappa] = PronyMethod.PronyCoefficients(obj.P,obj.MicSpacing,obj.NrModes);
             
-            [C, kappa] = PronyMethod.ESPRIT(obj.P,obj.MicSpacing,obj.NrModes,obj.Epsilon);
+%             [C, kappa] = PronyMethod.ESPRIT(obj.P,obj.MicSpacing,obj.NrModes,obj.Epsilon);
              
-            [C, kappa] = PronyMethod.MatrixPencil(obj.P,obj.MicSpacing,obj.NrModes,obj.Epsilon);
+%             [C, kappa] = PronyMethod.MatrixPencil(obj.P,obj.MicSpacing,obj.NrModes,obj.Epsilon);
 %             
 %             [C, kappa] = PronyMethod.MyLittleProny(obj.P,obj.MicSpacing,obj.NrModes,obj.Epsilon);
 
@@ -204,7 +204,7 @@ classdef PronyMethod < handle
 %             Lambda = roots([1; -Solution]);
             
             %Construct the vandermonde matrix to obtain the coefficients
-            V = Lambda.^(0:M-1).';
+            V = PronyMethod.Vandermonde(M,Lambda);
             %Obtain the coefficients for each of the exponential
             C = V\P.';
             Amplitude = C;
