@@ -37,9 +37,11 @@ classdef PronyMethod < handle
                 obj.P = P;
                 obj.MicSpacing = MicSpacing;
                 obj.NrModes = NrModes;
-                obj.Epsilon = Epsilon;
-                obj.Method = Method;
+                obj.Parameter = Parameter;
+            elseif nargin == 1
+                obj.TestFunctionNicolas
             else
+                
                 obj.TestClass;
             end
         end
@@ -134,10 +136,7 @@ classdef PronyMethod < handle
             
             obj.P = Pressure;
             
-%             [C, kappa] = PronyMethod.ESPRIT(obj.P,obj.MicSpacing,obj.NrModes,obj.Epsilon);
-             
-%             [C, kappa] = PronyMethod.MatrixPencil(obj.P,obj.MicSpacing,obj.NrModes,obj.Epsilon);
-            
+         
             [C, kappa] = PronyMethod.BasicPronyMethod(obj.P,obj.MicSpacing,obj.NrModes,obj.Epsilon);
 
             %Sort the modes by amplitude
@@ -187,7 +186,7 @@ classdef PronyMethod < handle
     end
     
     methods(Static)
-        
+
         function [Amplitudes, kappa] = MatrixPencil(P, dX, L, epsilon)
             % L = number of modes that are calculated
             % M = number of modes we look at
