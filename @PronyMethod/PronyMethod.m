@@ -89,7 +89,8 @@ classdef PronyMethod < handle
         
         function obj = PlotAmplitude(obj)
             %Function to plot the obtained real and imaginary part of each
-            %of the modes and the relative amplitude of the modes compared to the largest mode present.             
+            %of the modes and the relative amplitude of the modes compared to the largest mode present. 
+            
             figure
             for nn = 1:obj.NrModes
                 subplot(obj.NrModes+1,1,nn)
@@ -97,7 +98,8 @@ classdef PronyMethod < handle
                 hold all
                 plot(obj.Frequency,imag(obj.kappa(nn,:)),'o');
             end
-            legend('Real part of wavenumber','Imag. part of wavenumber')            
+            legend('Real part of wavenumber','Imag. part of wavenumber')  
+            
            
             AX1 = subplot(obj.NrModes+1,1,obj.NrModes+1);            
             for ff = 1:size(obj.Frequency,2)
@@ -109,43 +111,106 @@ classdef PronyMethod < handle
             end
         end
         
-        function obj = TestFunctionNicolas(obj,L)
+        function TestFunctionNicolas(obj)
         %function to determine whether the equispacing function works well
         
         %different signals to be tested 
-        x=0:0.1:15;
-        X_test=transpose(x+0.01*sin(30*x)); 
-        t= transpose(0:0.1:15);
-        Testsignal=14-8*cos(0.453*X_test)+9*sin(0.53*X_test)+4*cos(0.979*X_test)+8*sin(0.979*X_test)-2*cos(0.981*X_test)+2*cos(1.847*X_test)-3*sin(1.847*X_test)+0.1*cos(2.154*X_test)-0.3*sin(2.154*X_test);
-        Testsignal2=14-8*cos(0.453*t)+9*sin(0.53*t)+4*cos(0.979*t)+8*sin(0.979*t)-2*cos(0.981*t)+2*cos(1.847*t)-3*sin(1.847*t)+0.1*cos(2.154*t)-0.3*sin(2.154*t);
-        
+         X_test=0.01+transpose(0:0.055:5*0.055);
+        t= transpose(0:0.01:1);
+        func = @(x) exp(1i*(-11.510242292516846 + 6.292327191264097i)*x);
+        Testsignal=func(X_test);
+        Testsignal2=func(t);
         %function call: 
         % 1. Parameter: KxN Vector of space locations
         % 2. Parameter: KxN Vector of testfunction
-        % 3. Parameter: Value of m: 1<=m<=K/2 with K= number of nodes 
-        % 4. Parameter: Value of L: K>=L>=N with N= nonharmonic bandwidth
-        % 5. Parameter: Vaue of b: b=4m/3pi b= Variance of the gaussian
+        % 3. Parameter: Value of L: K>=L>=N with N= nonharmonic bandwidth
+        % 4. Parameter: Vaue of b:  Variance of the gaussian
         
-        [equiPressure, equiX] =obj.equispacing(X_test,Testsignal,L,L*4/(9*pi));
+        [equiPressure, equiX] =PronyMethod.equispacing(X_test,Testsignal,6,12.3);
+        [Testdata, equigrid] =PronyMethod.equispacing(t,Testsignal2,99,12.3);
         
-        % plot the results 
-        % plot of the reconstructed points laying on the basic function
+%        MSE of the approximated Data and the Testdata
+         error=equiPressure-func(equiX);
+
         figure
-        subplot(2,1,1)
-        plot(equiX,equiPressure,'o')
+        subplot(3,2,1)
+        plot(equigrid,real(Testdata),'x')
+        ylabel('Reconstructed Amplitude')
+        xlabel('Equispaced Steps')
+        hold on
+        plot(t,real(Testsignal2))
+        plot(equiX,real(equiPressure),'o')
+        title('Real part')
+      
+        
+        %imaginary Part
+        
+        subplot(3,2,2)
+        plot(equigrid,imag(Testdata),'x')
         ylabel('Reconstructed')
         xlabel('Equispaced Steps')
         hold on
-        plot(t,Testsignal2)
+        plot(t,imag(Testsignal2))
+        plot(equiX,imag(equiPressure),'o')
+        title('Imaginary part')
+        legend('generated Data','Testsignal','Measurement points')
+        
+        
+        % Plot errrors of real Part  
+        subplot(3,2,3)
+        plot(equiX,real(error))
+        ylabel('Error of reconstruction')
+        xlabel('Equispaced Steps')
+        hold on
+        plot(t,zeros(length(t)));
+        
+        % Plot errrors of imag Part  
+        subplot(3,2,4)
+        plot(equiX,imag(error))
+        ylabel('Error of reconstruction')
+        xlabel('Equispaced Steps')        
+        hold on
+        plot(t,zeros(length(t)));
         
         % plot of the input with non equispaced nodes 
-        subplot(2,1,2)
-        plot(X_test,Testsignal,'o')
+        %real
+        
+        subplot(3,2,5)
+        plot(X_test,real(Testsignal),'o')
         ylabel('Testfunction')
         xlabel('Non-Equispaced Steps')
         hold on
-        plot(t,Testsignal2)
+        plot(t,real(Testsignal2))
         
+        %imaginary
+        subplot(3,2,6)
+        plot(X_test,imag(Testsignal),'o')
+        ylabel('Testfunction')
+        xlabel('Non-Equispaced Steps')
+        hold on
+        plot(t,imag(Testsignal2))
+        
+        %best parameter estimate for b
+        kx=[4.48291066436601 - 0.0232247424295838i;5.41782308166276 - 0.0252505740248546i;6.34711835706620 - 0.0271515381332884i;7.27292078959503 - 0.0289422972352744i;8.19639320338978 - 0.0306373246438771i;9.11822807268444 - 0.0322490790633878i;10.0388646289507 - 0.0337879280000863i;10.9585955258497 - 0.0352624496801973i;11.8776236209035 - 0.0366797698925568i;12.7960941782502 - 0.0380458519566265i;13.7141140953456 - 0.0393657289147092i;14.6317638826141 - 0.0406436852143972i;15.5491054014463 - 0.0418833981827764i;16.4661870190230 - 0.0430880485163045i;17.3830471353964 - 0.0442604071291219i;18.2997166540144 - 0.0454029039623454i;19.2162207483640 - 0.0465176829647735i;20.1325801487590 - 0.0476066463992921i;21.0488120952079 - 0.0486714908444128i;21.9649310535897 - 0.0497137366808734i;22.8809492612396 - 0.0507347524250974i;23.7968771477129 - 0.0517357749536686i;24.7127236629481 - 0.0527179264258585i;25.6284965358633 - 0.0536822285329635i;26.5442024800763 - 0.0546296145681435i;27.4598473590062 - 0.0555609397073330i;28.3754363194589 - 0.0564769898124638i;29.2909739005355 - 0.0573784890067363i;30.2064641230508 - 0.0582661062236577i;31.1219105634366 - 0.0591404608938080i;32.0373164152010 - 0.0600021279033990i;32.9526845403354 - 0.0608516419348758i;33.8680175125510 - 0.0616895012807165i;34.7833176538282 - 0.0625161712061832i;35.6985870654663 - 0.0633320869242929i;36.6138276545808 - 0.0641376562360900i];
+        b=linspace(1,100,100);
+        nn=length(kx);
+        predicted=zeros(6,length(b),nn);
+        real1=zeros(6,length(b),nn);
+        fonc = @(x,y) exp(1i*(y)*x);
+        
+        
+        for bb=1:length(b)
+            for kk=1:nn
+            [predicted(:,bb,kk),~]=PronyMethod.equispacing(X_test,fonc(X_test,kx(kk)),6,b(bb));
+            real1(:,bb,kk)=fonc(X_test,kx(kk));
+            end
+        end
+        argument=predicted-real1;
+        handover=sqrt(dot(argument,argument));
+        mse=(1/nn)*dot(sqrt(handover),sqrt(handover),3);
+        
+        figure;
+        plot(b,mse)
        end
         
         function obj = TestClass(obj)
@@ -672,15 +737,15 @@ classdef PronyMethod < handle
             S_1 = S_0(1:length(S_0(:,1)), (1+s):(L+s));
         end
         
-        function [equiPressure, equiX] = equispacing(X,P,n,b)
+       function [equiPressure, equiX] = equispacing(X,P,n,b)
          %This function approximates the complex pressure function with
          %nonequispaced steps and transforms it to a equispaced stepsized
          
          % Input 
          % 1. Parameter: KxN Vector of space locations
-         % 2. Parameter: KxN Vector of testfunction with K= number nodes
+         % 2. Parameter: KxN Vector of testfunction
          % 3. Parameter: Value of L: K>=L>=N with N= nonharmonic bandwidth
-         % 4. Parameter: Value of b: b=4*n/9*pi b= Variance of the gaussian
+         % 4. Parameter: b= Variance of the gaussian
         
          % Output
          % 1. Parameter: Kx1 vector equiPressure= approximated Pressure with homogenious
@@ -706,39 +771,38 @@ classdef PronyMethod < handle
          argumentX=zeros(N,n);
          augmentedX=zeros(N,n);
          
-        
-          l=-n/2:(n/2)-1;
+         l=-n/2:(n/2)-1;
          
          %argumentX is going to be the new argument used for the
          %windowfunction with eiquispaced input
          for ll=1:n
-            argumentX(:,ll)=((X-max(X)/2)/max(X))-((1/n)*ll); 
+            argumentX(:,ll)=((X-max(X)/2)/max(X))-((1/n)*l(ll)); 
          end
          
          %augmented X is going to be the new argument used for the
          %windowfunction with eiquispaced input
          for ll=1:n
-            augmentedX(:,ll)=((equiX-max(X)/2)/max(X))-((1/n)*ll); 
+            augmentedX(:,ll)=((equiX-max(X)/2)/max(X))-((1/n)*l(ll)); 
          end
          
          
          %truncated window function 
-         truncatedphi= twindow(argumentX,b,n);
-         truncatedphi2= twindow(augmentedX,b,n);
+         truncatedphi= PronyMethod.twindow(argumentX,b,n);
+         truncatedphi2= PronyMethod.twindow(augmentedX,b,n);
          
 %        Computation of the support coefficients h
          h=truncatedphi\P; 
          
 %        Computation of the pressure with equispaced nodes
          equiPressure = truncatedphi2*h;
-         
+
         end
         
         function truncatedphi= twindow(argument,b,n)
             % this functions sets up the truncated window function for a
             % gaussian bell window function 
             % inputs: argument: Matrix of different locations in space per node
-            %         b: Variance of the gaussian, b=4*n/9*pi 
+            %         b: Variance of the gaussian
             %         n: number of parameters h
            
         
