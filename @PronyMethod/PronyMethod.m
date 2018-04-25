@@ -18,13 +18,20 @@ classdef PronyMethod < handle
     properties
         Frequency      % Column vector of the frequencies used during the measurement, in increasing order 
         P              % Matrix of the measured complex pressures, of size (number of frequencies used) * (number of measurement points)
-        MicSpacing     % Real number, distance between the measurement points
-        NrModes        % Integer, maximum number of modes we calculate
-        AllAmplitudes  % Matrix of the amplitudes of each mode and for each frequency used, of size (NrModes) * (number of frequencies used) 
-        WaveNumber     % Row vector of the wavenumber corresponding to the first mode for each frequency used
-        AllWaveNumbers % Matrix of the wavenumbers of each mode and for each frequency used, of size (NrModes) * (number of frequencies used) 
+        
+        
+        NrModes        % Integer, maximum number of modes we calculate        
+        WaveNumber     % Row vector of the wavenumber corresponding to the first mode for each frequency used       
         Epsilon        % Real number between 0 and 1, see description of its use in BasicPronyMethod, MatrixPencil and ESPRIT
+        
         Method         % Character string, name of the method used to determine the amplitudes and wavenumbers of each mode of the complex signal (choice between 'BasicPronyMethod', 'MatrixPencil' and 'ESPRIT')
+        AllWaveNumbers % Matrix of the wavenumbers of each mode and for each frequency used, of size (NrModes) * (number of frequencies used)
+        AllAmplitudes  % Matrix of the amplitudes of each mode and for each frequency used, of size (NrModes) * (number of frequencies used) 
+        
+        %Private properties
+        MicPositions   % Microphone positions used in the measurement
+        MicEqPositions % Equidistant microphone positions used to evaluate the prony method
+        MicSpacing     % Real number, distance between the measurement points
     end
     
     methods
@@ -36,7 +43,7 @@ classdef PronyMethod < handle
                 obj.P = P;
                 obj.MicSpacing = MicSpacing;
                 obj.NrModes = NrModes;
-                obj.Epsilon = Epsilon;
+                obj.Epsilon = 1-1e-10; % This value of Epsilon is found to function best.
                 obj.Method = Method;
             elseif nargin == 1
                 obj.TestFunctionNicolas
@@ -45,27 +52,21 @@ classdef PronyMethod < handle
                 obj.TestClass;
             end
         end
-        
-        function obj = DetermineImpedance(obj)
-            
-        end
-        
-        function obj = DetermineWaveNumber(obj)
+                     
+        function obj = DetermineWaveNumber(obj,Method)
             %Calculating the wavenumber and the amplitude of the modes for
             %each frequency
+            %The default method is the ESPRIT method.
+            if nargin == 1                
+                Method = 'ESPRIT';
+            end
             for ff = 1:size(obj.P,2)
-                if strcmp(obj.Method, 'ESPRIT')
-                    [Amplitude_temp,kappa_temp] = obj.ESPRIT(obj.P(:,ff).',obj.MicSpacing,obj.NrModes, obj.Epsilon); % 1e-10
-                    obj.AllAmplitudes(:,ff) = [Amplitude_temp ; zeros(obj.NrModes - length(Amplitude_temp), 1)];
-                    obj.AllWaveNumbers(:,ff) = [kappa_temp ; zeros(obj.NrModes - length(kappa_temp), 1)];
-                elseif strcmp(obj.Method, 'MatrixPencil')
-                    [Amplitude_temp,kappa_temp] = obj.MatrixPencil(obj.P(:,ff).',obj.MicSpacing,obj.NrModes, obj.Epsilon); % 1e-10
-                    obj.AllAmplitudes(:,ff) = [Amplitude_temp ; zeros(obj.NrModes - length(Amplitude_temp), 1)];
-                    obj.AllWaveNumbers(:,ff) = [kappa_temp ; zeros(obj.NrModes - length(kappa_temp), 1)];
-                elseif strcmp(obj.Method, 'Basic')
-                    [Amplitude_temp,kappa_temp] = obj.BasicPronyMethod(obj.P(:,ff).',obj.MicSpacing,obj.NrModes, obj.Epsilon);
-                    obj.AllAmplitudes(:,ff) = [Amplitude_temp ; zeros(obj.NrModes - length(Amplitude_temp), 1)];
-                    obj.AllWaveNumbers(:,ff) = [transpose(kappa_temp) ; zeros(obj.NrModes - length(kappa_temp), 1)];
+                if strcmp(Method, 'ESPRIT')
+                    [obj.AllAmplitudes(:,ff),obj.AllWaveNumbers(:,ff)] = obj.ESPRIT(obj.P(:,ff).',obj.MicSpacing,obj.NrModes, obj.Epsilon); % 1e-10
+                elseif strcmp(Method, 'MatrixPencil')
+                    [obj.AllAmplitudes(:,ff),obj.AllWaveNumbers(:,ff)] = obj.MatrixPencil(obj.P(:,ff).',obj.MicSpacing,obj.NrModes, obj.Epsilon); % 1e-10
+                elseif strcmp(Method, 'Basic')
+                    [obj.AllAmplitudes(:,ff),obj.AllWaveNumbers(:,ff)] = obj.BasicPronyMethod(obj.P(:,ff).',obj.MicSpacing,obj.NrModes, obj.Epsilon);
                 end
             end
             obj.WaveNumber = obj.AllWaveNumbers(1,:);
@@ -88,8 +89,7 @@ classdef PronyMethod < handle
         
         function obj = PlotAmplitude(obj)
             %Function to plot the obtained real and imaginary part of each
-            %of the modes and the relative amplitude of the modes compared to the largest mode present. 
-            
+            %of the modes and the relative amplitude of the modes compared to the largest mode present.             
             figure
             for nn = 1:obj.NrModes
                 subplot(obj.NrModes+1,1,nn)
@@ -97,8 +97,7 @@ classdef PronyMethod < handle
                 hold all
                 plot(obj.Frequency,imag(obj.kappa(nn,:)),'o');
             end
-            legend('Real part of wavenumber','Imag. part of wavenumber')  
-            
+            legend('Real part of wavenumber','Imag. part of wavenumber')            
            
             AX1 = subplot(obj.NrModes+1,1,obj.NrModes+1);            
             for ff = 1:size(obj.Frequency,2)
@@ -110,7 +109,7 @@ classdef PronyMethod < handle
             end
         end
         
-        function TestFunctionNicolas(obj,L)
+        function obj = TestFunctionNicolas(obj,L)
         %function to determine whether the equispacing function works well
         
         %different signals to be tested 
@@ -149,45 +148,50 @@ classdef PronyMethod < handle
         
        end
         
-        function TestClass(obj)
+        function obj = TestClass(obj)
             % Set the properties of the class
-            obj.NrModes = 12;
-            obj.MicSpacing = 0.1;
-            obj.Epsilon = 1-1e-10;
-                                   
+            
+            obj.Epsilon = 1-1e-10;     
+            
+            
+            obj.MicEqPositions = 0:0.025:1;
+            obj.MicSpacing = obj.MicEqPositions(2)-obj.MicEqPositions(1);
+            obj.MicPositions = obj.MicEqPositions;
+            %obj.MicPositions(2:end-1) = obj.MicEqPositions(2:end-1) + obj.MicSpacing/2*rand(1,length(obj.MicPositions)-2); 
+            obj.NrModes = floor(length(obj.MicPositions)/2);
+            
             %Function to determine whether the prony method is implemented
             %correctly
-             %1-MicSpacing; %0.15
+            %1-MicSpacing; %0.15
             %The wavenumbers have to be large enough that there is a
             %variation accross the microphones
             
             %The wavenumbers are be sorted using the size of the absolute
             %value.
-            k = [2+1i,1+2i,5+4i,3,6i, 1.5+1.5i]*5;
+            k = [6+3i,3+6i,15+12i,9,18i, 4.5+4.5i];
             A = [10-8i,5+9i,-5-6i,-5+4i,2+2i,1-1i];
             
             %Determine pressure with the above exponentials at the
-            %positions X.
-            X = 0:obj.MicSpacing:2.4;
-            Pressure = zeros(1,length(X));
+            %positions X.            
+            Pressure = zeros(1,length(obj.MicPositions));
             for ii = 1:length(k) %NrModes
-                Pressure = Pressure + A(ii) * exp(1i * k(ii) * X);
+                Pressure = Pressure + A(ii) * exp(1i * k(ii) * obj.MicPositions);
             end
+            obj.P = Pressure + 0*randn(1,length(Pressure));
             
-            obj.P = Pressure;
-            
-         
+            %Approximate the function values on a randomized non-equispaced grid
+                        
             [C, kappa] = PronyMethod.BasicPronyMethod(obj.P,obj.MicSpacing,obj.NrModes,obj.Epsilon);
 
             %Sort the modes by amplitude
             figure
             subplot(3,2,1)
-            plot(X,real(Pressure));
+            plot(obj.MicPositions,real(Pressure));
             xlabel('Distance')
             ylabel('Real Pressure')
 
             subplot(3,2,2)
-            plot(X,imag(Pressure));
+            plot(obj.MicPositions,imag(Pressure));
             xlabel('Distance')
             ylabel('Imag Pressure')
             
@@ -240,7 +244,7 @@ classdef PronyMethod < handle
         % based come from [D. Potts, M. Tasche/Linear Algebra and its
         % Applications 439 (2013) 1024-1039].
         
-        function [Amplitudes, kappa] = BasicPronyMethod(P, dX, L, epsilon)
+        function [Amplitudes, Wavenumbers] = BasicPronyMethod(P, dX, L, epsilon)
             % This method is one of the three Prony based methods designed to compute the wavenumbers and amplitudes of each mode of the Prony decomposition of a measured signal.
             %
             % Inputs :
@@ -360,11 +364,11 @@ classdef PronyMethod < handle
             [~,I] = sort(abs(C_1),'descend');
             Amplitudes = Amplitudes(I);
             
-            kappa = kappa(I);
-            
+            Wavenumbers = zeros(1,L);
+            Wavenumbers(1:length(I)) = kappa(I);
         end
         
-        function [Amplitudes, kappa] = MatrixPencil(P, dX, L, epsilon)
+        function [Amplitudes, Wavenumbers] = MatrixPencil(P, dX, L, epsilon)
             % This method is one of the three Prony based methods designed to compute the wavenumbers and amplitudes of each mode of the Prony decomposition of a measured signal.
             %
             % Inputs :
@@ -503,12 +507,11 @@ classdef PronyMethod < handle
             [~,I] = sort(abs(C),'descend');
             Amplitudes = Amplitudes(I);
             
-            kappa = kappa(I);
-            kappa = kappa.';
-            
+            Wavenumbers = zeros(1,L);
+            Wavenumbers(1:length(I)) = kappa(I);
         end
         
-        function [Amplitudes, kappa] = ESPRIT(P, dX, L, epsilon)
+        function [Amplitudes, Wavenumbers] = ESPRIT(P, dX, L, epsilon)
             % This method is one of the three Prony based methods designed to compute the wavenumbers and amplitudes of each mode of the Prony decomposition of a measured signal.
             %
             % Inputs :
@@ -625,8 +628,8 @@ classdef PronyMethod < handle
             [~,I] = sort(abs(C),'descend');
             Amplitudes = Amplitudes(I);
             
-            kappa = kappa(I);
-            
+            Wavenumbers = zeros(1,L);
+            Wavenumbers(1:length(I)) = kappa(I);
         end
         
         function [AX] = ArrowPlotComplexDomain(AX,Data)
@@ -677,7 +680,7 @@ classdef PronyMethod < handle
          % 1. Parameter: KxN Vector of space locations
          % 2. Parameter: KxN Vector of testfunction with K= number nodes
          % 3. Parameter: Value of L: K>=L>=N with N= nonharmonic bandwidth
-         % 4. Parameter: Vaue of b: b=4*n/9*pi b= Variance of the gaussian
+         % 4. Parameter: Value of b: b=4*n/9*pi b= Variance of the gaussian
         
          % Output
          % 1. Parameter: Kx1 vector equiPressure= approximated Pressure with homogenious
