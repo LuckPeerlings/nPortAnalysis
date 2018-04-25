@@ -47,8 +47,7 @@ classdef PronyMethod < handle
                 obj.Method = Method;
             elseif nargin == 1
                 obj.TestFunctionNicolas
-            else
-                
+            else                
                 obj.TestClass;
             end
         end
@@ -115,7 +114,8 @@ classdef PronyMethod < handle
         %function to determine whether the equispacing function works well
         
         %different signals to be tested 
-         X_test=0.01+transpose(0:0.055:5*0.055);
+         
+        X_test=0.01+transpose(0:0.055:5*0.055);
         t= transpose(0:0.01:1);
         func = @(x) exp(1i*(-11.510242292516846 + 6.292327191264097i)*x);
         Testsignal=func(X_test);
@@ -216,13 +216,15 @@ classdef PronyMethod < handle
         function obj = TestClass(obj)
             % Set the properties of the class
             
-            obj.Epsilon = 1-1e-10;     
+            obj.Epsilon = 1-1e-10;% 0.999;%1-1e-10;%0.01;%1-1e-10;     
             
             
-            obj.MicEqPositions = 0:0.025:1;
+            obj.MicEqPositions = 0:0.1:1;
             obj.MicSpacing = obj.MicEqPositions(2)-obj.MicEqPositions(1);
+            
             obj.MicPositions = obj.MicEqPositions;
-            %obj.MicPositions(2:end-1) = obj.MicEqPositions(2:end-1) + obj.MicSpacing/2*rand(1,length(obj.MicPositions)-2); 
+            obj.MicPositions(2:end-1) = obj.MicEqPositions(2:end-1) + 0.01*obj.MicSpacing/2*rand(1,length(obj.MicPositions)-2);
+            
             obj.NrModes = floor(length(obj.MicPositions)/2);
             
             %Function to determine whether the prony method is implemented
@@ -234,7 +236,11 @@ classdef PronyMethod < handle
             %The wavenumbers are be sorted using the size of the absolute
             %value.
             k = [6+3i,3+6i,15+12i,9,18i, 4.5+4.5i];
-            A = [10-8i,5+9i,-5-6i,-5+4i,2+2i,1-1i];
+            A = [10-10i,5+9i,-5-6i,-5+4i,2+2i,1-1i];
+%             
+              
+            k = k(1:2)
+            A = A(1:2)
             
             %Determine pressure with the above exponentials at the
             %positions X.            
@@ -244,19 +250,25 @@ classdef PronyMethod < handle
             end
             obj.P = Pressure + 0*randn(1,length(Pressure));
             
+            [equiPressure] = PronyMethod.equispacing(obj.MicPositions,obj.MicEqPositions,obj.P.',length(obj.P),12.3);
             %Approximate the function values on a randomized non-equispaced grid
                         
-            [C, kappa] = PronyMethod.BasicPronyMethod(obj.P,obj.MicSpacing,obj.NrModes,obj.Epsilon);
+           [C, kappa] = PronyMethod.BasicPronyMethod(equiPressure.',obj.MicSpacing,obj.NrModes,obj.Epsilon);
+            [C, kappa] = PronyMethod.ESPRIT(equiPressure.',obj.MicSpacing,obj.NrModes,obj.Epsilon);
 
             %Sort the modes by amplitude
             figure
             subplot(3,2,1)
-            plot(obj.MicPositions,real(Pressure));
+            plot(obj.MicPositions,real(Pressure),'o');
+            hold all
+            plot(obj.MicEqPositions,real(equiPressure),'x');
             xlabel('Distance')
             ylabel('Real Pressure')
 
             subplot(3,2,2)
-            plot(obj.MicPositions,imag(Pressure));
+            plot(obj.MicPositions,imag(Pressure),'o');
+            hold all
+            plot(obj.MicEqPositions,imag(equiPressure),'x');
             xlabel('Distance')
             ylabel('Imag Pressure')
             
@@ -266,7 +278,7 @@ classdef PronyMethod < handle
             plot(real(k),'o')
             ylabel('Real Wavenumber')
             xlabel('Mode nr')
-            legend('Educed','Input')
+%             legend('Educed','Input')
             
             subplot(3,2,4)
             plot(imag(kappa),'x')
@@ -274,7 +286,7 @@ classdef PronyMethod < handle
             plot(imag(k),'o')
             ylabel('Imag Wavenumber')
             xlabel('Mode nr')   
-            legend('Educed','Input')
+%             legend('Educed','Input')
                         
             subplot(3,2,5)
             plot(real(C),'x')
@@ -282,7 +294,7 @@ classdef PronyMethod < handle
             plot(real(A),'o')
             ylabel('Real Amplitude')
             xlabel('Mode nr')
-            legend('Educed','Input')
+%             legend('Educed','Input')
             
             subplot(3,2,6)
             plot(imag(C),'x')
@@ -290,7 +302,7 @@ classdef PronyMethod < handle
             plot(imag(A),'o')
             ylabel('Imag Amplitude')
             xlabel('Mode nr')
-            legend('Educed','Input')
+%             legend('Educed','Input')
         end
     end
     
@@ -425,9 +437,10 @@ classdef PronyMethod < handle
             
             % At last, the modes are sorted by decreasing amplitudes :
             
-            Amplitudes = C_1;
+            
+            Amplitudes = zeros(1,L);
             [~,I] = sort(abs(C_1),'descend');
-            Amplitudes = Amplitudes(I);
+            Amplitudes(1:length(I)) = C_1(I);
             
             Wavenumbers = zeros(1,L);
             Wavenumbers(1:length(I)) = kappa(I);
@@ -568,9 +581,9 @@ classdef PronyMethod < handle
             
             % At last, the modes are sorted by decreasing amplitudes :
             
-            Amplitudes = C;
+            Amplitudes = zeros(1,L);
             [~,I] = sort(abs(C),'descend');
-            Amplitudes = Amplitudes(I);
+            Amplitudes(1:length(I)) = C(I);
             
             Wavenumbers = zeros(1,L);
             Wavenumbers(1:length(I)) = kappa(I);
@@ -689,9 +702,9 @@ classdef PronyMethod < handle
             
             % At last, the modes are sorted by decreasing amplitudes :
             
-            Amplitudes = C;
+            Amplitudes = zeros(1,L);
             [~,I] = sort(abs(C),'descend');
-            Amplitudes = Amplitudes(I);
+            Amplitudes(1:length(I)) = C(I);
             
             Wavenumbers = zeros(1,L);
             Wavenumbers(1:length(I)) = kappa(I);
@@ -737,7 +750,7 @@ classdef PronyMethod < handle
             S_1 = S_0(1:length(S_0(:,1)), (1+s):(L+s));
         end
         
-       function [equiPressure, equiX] = equispacing(X,P,n,b)
+       function [equiPressure] = equispacing(X, equiX, P,n,b)
          %This function approximates the complex pressure function with
          %nonequispaced steps and transforms it to a equispaced stepsized
          
@@ -755,17 +768,9 @@ classdef PronyMethod < handle
            
          % 1) Initialization of parameters for the algorithm
          N=length(X);
-         equiX=zeros(N,1);
                  
          % 2) Preconditioning of necessary functions
-         %Adapting a new step size to gain a uniform step size
          
-         step_size=(max(X)-min(X))/(N-1); 
-         equiX(1)=X(1);
-                  
-         for ii=2:N
-              equiX(ii)=equiX(1)+(ii-1)*step_size;             
-         end
              
          %Preparing the window function and the stepsize     
          argumentX=zeros(N,n);
