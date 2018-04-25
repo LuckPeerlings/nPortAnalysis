@@ -16,16 +16,15 @@ classdef PronyMethod < handle
     % - Comment the code with references to the paper where necessary
     
     properties
-        %Vector of the measured pressures
-        Frequency
-        P
-        MicSpacing %The microphone spacing
-        NrModes
-        AllAmplitudes
-        WaveNumber
-        AllWaveNumbers
-        Epsilon
-        Method
+        Frequency      % Column vector of the frequencies used during the measurement, in increasing order 
+        P              % Matrix of the measured complex pressures, of size (number of frequencies used) * (number of measurement points)
+        MicSpacing     % Real number, distance between the measurement points
+        NrModes        % Integer, maximum number of modes we calculate
+        AllAmplitudes  % Matrix of the amplitudes of each mode and for each frequency used, of size (NrModes) * (number of frequencies used) 
+        WaveNumber     % Row vector of the wavenumber corresponding to the first mode for each frequency used
+        AllWaveNumbers % Matrix of the wavenumbers of each mode and for each frequency used, of size (NrModes) * (number of frequencies used) 
+        Epsilon        % Real number between 0 and 1, see description of its use in BasicPronyMethod, MatrixPencil and ESPRIT
+        Method         % Character string, name of the method used to determine the amplitudes and wavenumbers of each mode of the complex signal (choice between 'BasicPronyMethod', 'MatrixPencil' and 'ESPRIT')
     end
     
     methods
@@ -37,7 +36,8 @@ classdef PronyMethod < handle
                 obj.P = P;
                 obj.MicSpacing = MicSpacing;
                 obj.NrModes = NrModes;
-                obj.Parameter = Parameter;
+                obj.Epsilon = Epsilon;
+                obj.Method = Method;
             elseif nargin == 1
                 obj.TestFunctionNicolas
             else
@@ -85,6 +85,7 @@ classdef PronyMethod < handle
             xlabel('Real part of wavenumber')
            
         end
+        
         function obj = PlotAmplitude(obj)
             %Function to plot the obtained real and imaginary part of each
             %of the modes and the relative amplitude of the modes compared to the largest mode present. 
@@ -186,21 +187,194 @@ classdef PronyMethod < handle
     end
     
     methods(Static)
-
+        
+        % The three following fonctions are all different methods to
+        % calculate the modeshapes of a measured signal. All of these
+        % methods are based on the assumption that the signal can be
+        % expressed as a sum of damped exponentials. Thus, the goal of
+        % these methods is to calculate the wavenumbers and the
+        % corresponding amplitudes of these exponentials for a certain
+        % number of modes, number which is determined inside the
+        % functions. All of these functions are based on the so-called
+        % "Prony Method", the first function corresponding to the original
+        % method, and the all of the algorithms on which their implementations are
+        % based come from [D. Potts, M. Tasche/Linear Algebra and its
+        % Applications 439 (2013) 1024-1039].
+        
+        function [Amplitudes, kappa] = BasicPronyMethod(P, dX, L, epsilon)
+            % This method is one of the three Prony based methods designed to compute the wavenumbers and amplitudes of each mode of the Prony decomposition of a measured signal.
+            %
+            % Inputs :
+            % - P = measured signal (Pressure)
+            % - dX = distance between the measurement points (MicSpacing)
+            % - L = number of modes that are calculated (upper bound for M)
+            % - epsilon = criterion used to discriminate low-influence modes
+            %
+            % Outputs :
+            % - Amplitudes : amplitudes corresponding to each guessed mode (column vector)
+            % - kappa : wavenumbers corresponding to each guessed mode (column vector)
+            
+            % The principle of this method is explained from page 1027 to
+            % 1029 of [D. Potts, M. Tasche] (see reference under "methods 
+            % (Static)", above). The algorithm is displayed at page 1029. 
+            
+            N = length(P)/2;
+            if L > N
+                error('The number of modes can not exceed the half of the measurement points')
+            elseif epsilon < 0 || epsilon > 1
+                error('Epsilon must be a number between 0 and 1')
+            end
+            
+            % First, the exponentials have to be calculated. These
+            % exponentials can be deduced from the roots of q, the "Prony 
+            % polynomial", whose coefficients vector is the solution of the
+            % Yule-Walker system H*q = h.
+            
+            % Thus, in the first place, the Yule-Walker system is built :
+            
+            H = PronyMethod.Hankel(2*N-L, L, 0, P);
+            h = P(L+1:2*N).';
+            
+            % Then, the roots of the polynomial built with its solution are
+            % calculated :
+            
+            Z_0 = roots([1 ; flip(-pinv(H)*h)]);
+            
+            % The roots of the polynomial are assumed to be the 
+            % exponentials. Now, the corresponding amplitudes have to be 
+            % calculated.
+            
+            % As the measurement points are equally spaced, one can assume
+            % that the coefficients of the exponentials are the solution of
+            % the system V*C = P, where P is the vector of the measured
+            % data and V a Vandermonde matrix based on the vector of the
+            % exponentials (as powering the exponentials would be
+            % equivalent to incrementing the measurement point).
+            
+            % First the Vandermonde is built via the "Vandermonde"
+            % function (implemented after the three methods) :
+            
+            V_0 = PronyMethod.Vandermonde(2*N, Z_0);
+            
+            % Then the amplitudes are calculated :
+            
+            C_0 = V_0\transpose(P);
+            
+            % Now, we have a set of modes, whose wavenumbers can be
+            % easily deduced as the distance between the measurement points
+            % is known, and their corresponding amplitudes. The next step 
+            % is to get rid of the modes whose amplitude are low compared
+            % to the other ones.
+            
+            % In order to discriminate the lowest modes, the vector is
+            % sorted (in decreasing order), and a variable "energy",
+            % corresponding to a proportion of the value of the sum of all
+            % of the amplitudes. The highest amplitudes (in terms of 
+            % absolute value) are chosen, until the sum of the chosen 
+            % amplitudes reaches a certain amount of energy (epsilon). 
+            % This very operation is used in the three methods.
+            
+            C_0_abs = abs(C_0);
+            sum_C_0 = sum(C_0_abs);
+            C_0_abs = C_0_abs / sum_C_0;
+            C_0_abs = sort(C_0_abs, 'descend');
+            energy = 0;
+            index = 0;
+            while index < length(C_0_abs) && energy < epsilon
+                index = index+1;
+                energy = energy + C_0_abs(index);
+            end
+            
+            % Safety case :
+            
+            if index == 0
+                index = 1;
+            end
+            
+            % Now that we know what modes have the most influence in the 
+            % signal (in terms of amplitude), we only keep their
+            % corresponding exponentials :
+            
+            Z_1 = Z_0(1:index);
+            
+            % A new Vandermonde matrix is then built with the new
+            % exponential vector :
+            
+            V_1 = PronyMethod.Vandermonde(2*N, Z_1);
+            
+            % The new amplitudes are calculated :
+            
+            C_1 = V_1\transpose(P);
+            
+            % The wavenumbers (kappa) can now be deduced from the
+            % exponentials :
+            
+            f_i = log(Z_1);
+            
+            for ii = 1:length(f_i)
+                kappa(ii) = -1i * f_i(ii) / dX;
+            end
+            
+            % At last, the modes are sorted by decreasing amplitudes :
+            
+            Amplitudes = C_1;
+            [~,I] = sort(abs(C_1),'descend');
+            Amplitudes = Amplitudes(I);
+            
+            kappa = kappa(I);
+            
+        end
+        
         function [Amplitudes, kappa] = MatrixPencil(P, dX, L, epsilon)
-            % L = number of modes that are calculated
-            % M = number of modes we look at
+            % This method is one of the three Prony based methods designed to compute the wavenumbers and amplitudes of each mode of the Prony decomposition of a measured signal.
+            %
+            % Inputs :
+            % - P = measured signal (Pressure)
+            % - dX = distance between the measurement points (MicSpacing)
+            % - L = number of modes that are calculated (upper bound for M)
+            % - epsilon = criterion used to discriminate low-influence modes
+            %
+            % Outputs :
+            % - Amplitudes : amplitudes corresponding to each guessed mode (column vector)
+            % - kappa : wavenumbers corresponding to each guessed mode (column vector)
+            
+            % The principle of this method is explained oat pages 1030 and
+            % 1031 of [D. Potts, M. Tasche] (see reference under "methods 
+            % (Static)", above). The algorithm is displayed at page 1032.
             
             N = length(P)/2;
             if L > N
                 error('The number of modes can not exceed the half of the measurement points')
             elseif L < 3
                 error('The number of modes must be superior or equal to 3')
+            elseif epsilon < 0 || epsilon > 1
+                error('Epsilon must be a number between 0 and 1')
             end
+            
+            % In this method, we try to solve the generalized eigenvalues
+            % problem z*H(0) - H(1), where H(0) and H(1) are Hankel 
+            % matrices of measured data (see the "Hankel" function after 
+            % the three methods). As H is, in general, rank deficient, we
+            % use a qr-decomposition to evaluate its order and simplify the
+            % problem.
+            
+            % First, the H matrix is built :
             
             H = PronyMethod.Hankel(2*N-L, L+1, 0, P);
             
+            % Then, a qr-decomposition is made on the H matrix. The
+            % matrices R and MPi (transposition matrix) are the only ones
+            % interesting.
+            
             [~, R, MPi] = qr(H);
+            
+            % In order to discriminate the lowest modes, a variable
+            % "energy", corresponding to a proportion of the value of the 
+            % sum of all of the diagonal elements of R, is created. The 
+            % highest elements (in terms of absolute value) are chosen, 
+            % until the sum of the chosen elements reaches a certain 
+            % amount of energy (epsilon). This very operation is used in
+            % the three methods.
             
             M = 0;
             energy = 0;
@@ -212,21 +386,44 @@ classdef PronyMethod < handle
                 energy = energy + Rabs(M);
             end
             
+            % Safety case :
+            
             if M == 0
                 M = 1;
             end
             
+            % Now that we have found how many modes we want to keep, we can
+            % re-build the problem in order to find its solutions, with
+            % H = Q * S :
+            
             S = R * transpose(MPi);
+            
+            % As Q is unitary, the solutions z of our problem are the same
+            % as for the problem z*S(0) - S(1), which are the same as  for
+            % the problem z*T(0) - T(1), T being equal to S without its
+            % null values (from index M+1 to 2*N-L-M), we re-build the
+            % problem with matrices T(0) and T(1) :
                         
             T_s0 = PronyMethod.Matrix_T(S, M, L, 0);
             T_s1 = PronyMethod.Matrix_T(S, M, L, 1);
             
+            % As the first M diagonal elements of R can be used as a
+            % preconditioning matrix, we build the corresponding matrix :
+            
             D = diag(diag(R(1:M, 1:M)));
+            
+            % Then the matrices T are conditioned :
             
             T_s0 = pinv(D) * T_s0;
             T_s1 = pinv(D) * T_s1;
             
+            % The generalized eigenvalues problem can then be transformed
+            % into a simple problem :
+            
             F = pinv(transpose(T_s0)) * transpose(T_s1);
+            
+            % The exponentials can now be computed as the eigenvalues of
+            % matrix F :
             
             Z = eig(F);
             
@@ -236,91 +433,94 @@ classdef PronyMethod < handle
                 disp('There are more eigenvalues than modes')
             end
             
-            f_i = log(Z);
+            % As the measurement points are equally spaced, one can assume
+            % that the coefficients of the exponentials are the solution of
+            % the system V*C = P, where P is the vector of the measured
+            % data and V a Vandermonde matrix based on the vector of the
+            % exponentials (as powering the exponentials would be
+            % equivalent to incrementing the measurement point).
+            
+            % First the Vandermonde is built via the "Vandermonde"
+            % function (implemented after the three methods) :
             
             V = PronyMethod.Vandermonde(2*N, Z);
             
+            % The amplitudes are now calculated :
+            
             C = V \ transpose(P);
             
-            Amplitudes = C;
-            [~,I] = sort(abs(C),'descend');
-            Amplitudes = Amplitudes(I);
+            % The wavenumbers (kappa) can now be deduced from the
+            % exponentials :
             
+            f_i = log(Z);
             
             for ii = 1:length(f_i)
                 kappa(ii) = -1i * f_i(ii) / dX;
             end
+            
+            % At last, the modes are sorted by decreasing amplitudes :
+            
+            Amplitudes = C;
+            [~,I] = sort(abs(C),'descend');
+            Amplitudes = Amplitudes(I);
             
             kappa = kappa(I);
             kappa = kappa.';
             
         end
         
-        function [Amplitudes, kappa] = BasicPronyMethod(P, dX, L, epsilon)
-            % L = number of modes that are calculated
-            
-            N = length(P)/2;
-            if L > N
-                error('The number of modes can not exceed the half of the measurement points')
-            end
-            
-            H = PronyMethod.Hankel(2*N-L, L, 0, P);
-            h = P(L+1:2*N).';
-            
-%             H_2 = toeplitz(P(L:(2*N-1)),fliplr(P(1:L)));
-%             h_2 = P(L+1:end).';
-            
-            Z_0 = roots([1 ; flip(-pinv(H)*h)]);
-            
-            V_0 = PronyMethod.Vandermonde(2*N, Z_0);
-            
-            C_0 = V_0\transpose(P);
-            
-            index = [];
-            for ii = 1:length(C_0)
-                if abs(C_0(ii)) > 1-epsilon
-                    index = [index, ii];
-                end
-            end
-            
-            Z_1 = Z_0(index);
-            
-            V_1 = PronyMethod.Vandermonde(2*N, Z_1);
-            
-            C_1 = V_1\transpose(P);
-            
-            f_i = log(Z_1);
-            
-            Amplitudes = C_1;
-            [~,I] = sort(abs(C_1),'descend');
-            Amplitudes = Amplitudes(I);
-            
-            for ii = 1:length(f_i)
-                kappa(ii) = -1i * f_i(ii) / dX;
-            end
-            
-            kappa = kappa(I);
-            
-        end
-        
         function [Amplitudes, kappa] = ESPRIT(P, dX, L, epsilon)
-            % L = number of modes that are calculated
+            % This method is one of the three Prony based methods designed to compute the wavenumbers and amplitudes of each mode of the Prony decomposition of a measured signal.
+            %
+            % Inputs :
+            % - P = measured signal (Pressure)
+            % - dX = distance between the measurement points (MicSpacing)
+            % - L = number of modes that are calculated (upper bound for M)
+            % - epsilon = criterion used to discriminate low-influence modes
+            %
+            % Outputs :
+            % - Amplitudes : amplitudes corresponding to each guessed mode (column vector)
+            % - kappa : wavenumbers corresponding to each guessed mode (column vector)
+            
+            % The principle of this method is explained on pages 1032 and
+            % 1033 of [D. Potts, M. Tasche] (see reference under "methods 
+            % (Static)", above). The algorithm is displayed at page 1033.
             
             N = length(P)/2;
             if L > N
                 error('The number of modes can not exceed the half of the measurement points')
+            elseif epsilon < 0 || epsilon > 1
+                error('Epsilon must be a number between 0 and 1')
             end
+            
+            % The principle of the ESPRIT method is quite the same as for
+            % the Matrix Pencil method, but the qr-decomposition is
+            % replaced by a singular values decomposition (SVD). Thus, the
+            % purpose is to calculate the exponentials of the Prony
+            % decomposition as the solution of the generalized eigenvalues
+            % problem z*H(0) - H(1) where H is a Hankel matrix of measured
+            % data.
+            
+            % In the first place, the matrix H is built :
             
             H = PronyMethod.Hankel(2*N-L, L+1, 0, P);
+            
+            % Then, a SVD is operated on the matrix H :
             
             [~, D, W] = svd(H);
             
             W = ctranspose(W);
             
-            sigma = diag(D);
+            % In order to discriminate the lowest modes, a variable
+            % "energy", corresponding to a proportion of the value of the 
+            % sum of all of the diagonal elements of D, is created. The 
+            % highest elements (in terms of absolute value) are chosen, 
+            % until the sum of the chosen elements reaches a certain 
+            % amount of energy (epsilon). This very operation is used in
+            % the three methods.
             
+            sigma = diag(D);
             sigma = abs(sigma);
-%             sigma = sigma.^2;
             sum_sigma = sum(sigma);
             sigma = sigma/sum_sigma;
             energy = 0;
@@ -331,22 +531,56 @@ classdef PronyMethod < handle
                 energy = energy + sigma(M);
             end
             
+            if M == 0
+                M = 1;
+            end
+            
+            % Now, the problem can be written with only the selected modes.
+            % For this, the matrix W has to be re-written :
+            
             W_rect = W(1:M, 1:L+1);
+            
+            % In order to correspond to the matrices H(0) and H(1), we
+            % define analog matrices W(0) and W(1) so that H(s) = U*D*W(s).
             
             W_0 = W_rect(1:M, 1:L);
             W_1 = W_rect(1:M, 2:L+1);
             
+            % As U is unitary, the problem can be written z*D*W(0)-D*W(1),
+            % and as one can multiply the problem with D^(-1), the problem
+            % can be written z*transpose(W(0))-transpose(W(1)).
+            
+            % The problem can then be transformed into a simple eigenvalue
+            % problem of the matrix F defined by :
+            
             F = pinv(transpose(W_0)) * transpose(W_1);
+            
+            % The exponentials can be computed as the eigenvalues of F :
             
             Z = eig(F);
             
+            % The wavenumbers can the be deduced from the exponentials :
+            
+            f_i = log(Z);
+            kappa = -1i * f_i / dX;
+            
+            % As the measurement points are equally spaced, one can assume
+            % that the coefficients of the exponentials are the solution of
+            % the system V*C = P, where P is the vector of the measured
+            % data and V a Vandermonde matrix based on the vector of the
+            % exponentials (as powering the exponentials would be
+            % equivalent to incrementing the measurement point).
+            
+            % First the Vandermonde is built via the "Vandermonde"
+            % function (implemented after the three methods) :
+            
             V = PronyMethod.Vandermonde(2*N, Z);
+            
+            % The amplitude can then be computed :
             
             C = V\transpose(P);
             
-            f_i = log(Z);
-            
-            kappa = -1i * f_i / dX;
+            % At last, the modes are sorted by decreasing amplitudes :
             
             Amplitudes = C;
             [~,I] = sort(abs(C),'descend');
