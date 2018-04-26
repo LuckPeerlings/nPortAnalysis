@@ -37,13 +37,13 @@ classdef PronyMethod < handle
     methods
         %Empty Constructor 
         %Constructor
-        function obj = PronyMethod(Frequency,P,MicSpacing,NrModes,Parameter)
+        function obj = PronyMethod(Frequency,P,MicSpacing,NrModes,Epsilon,Method)
             if nargin > 1 
                 obj.Frequency = Frequency; 
                 obj.P = P;
                 obj.MicSpacing = MicSpacing;
                 obj.NrModes = NrModes;
-                obj.Epsilon = 1-1e-10; % This value of Epsilon is found to function best.
+                obj.Epsilon = Epsilon; %1-1e-10; % This value of Epsilon is found to function best.
                 obj.Method = Method;
             elseif nargin == 1
                 obj.TestFunctionNicolas
@@ -224,14 +224,14 @@ classdef PronyMethod < handle
         function obj = TestClass(obj)
             % Set the properties of the class
             
-            obj.Epsilon = 1-1e-10;% 0.999;%1-1e-10;%0.01;%1-1e-10;     
+            obj.Epsilon = 0.65; %1-1e-10;  
             
             
             obj.MicEqPositions = 0:0.1:1;
             obj.MicSpacing = obj.MicEqPositions(2)-obj.MicEqPositions(1);
             
             obj.MicPositions = obj.MicEqPositions;
-            obj.MicPositions(2:end-1) = obj.MicEqPositions(2:end-1) + 0.01*obj.MicSpacing/2*rand(1,length(obj.MicPositions)-2);
+            obj.MicPositions(2:end-1) = obj.MicEqPositions(2:end-1) + 0.00*obj.MicSpacing/2*rand(1,length(obj.MicPositions)-2);
             
             obj.NrModes = floor(length(obj.MicPositions)/2);
             
@@ -247,8 +247,9 @@ classdef PronyMethod < handle
             A = [10-10i,5+9i,-5-6i,-5+4i,2+2i,1-1i];
 %             
               
-            k = k(1:2)
-            A = A(1:2)
+            k = k(1:2);
+            A = A(1:2);
+%             k = [4.48291066436601 - 0.0232247424295838i;5.41782308166276 - 0.0252505740248546i] *5*0.055;
             
             %Determine pressure with the above exponentials at the
             %positions X.            
@@ -256,13 +257,18 @@ classdef PronyMethod < handle
             for ii = 1:length(k) %NrModes
                 Pressure = Pressure + A(ii) * exp(1i * k(ii) * obj.MicPositions);
             end
-            obj.P = Pressure + 0*randn(1,length(Pressure));
+            SNR = 0.05;
+            L = length(Pressure);
+            E = mean((abs(Pressure)).^2);
+            noise = sqrt(SNR * E / 2) .* (randn(1,L)); % + 1i.*randn(L,1));
+            obj.P = Pressure + noise;
             
             [equiPressure] = PronyMethod.equispacing(obj.MicPositions.',obj.MicEqPositions.',obj.P.',length(obj.P),12.3);
             %Approximate the function values on a randomized non-equispaced grid
            
             
                         
+
             [C, kappa] = PronyMethod.BasicPronyMethod(equiPressure.',obj.MicSpacing,obj.NrModes,obj.Epsilon);
             [C, kappa] = PronyMethod.ESPRIT(equiPressure.',obj.MicSpacing,obj.NrModes,obj.Epsilon);
 
@@ -663,6 +669,8 @@ classdef PronyMethod < handle
             
             if M == 0
                 M = 1;
+            elseif M > L
+                M = L;
             end
             
             % Now, the problem can be written with only the selected modes.
@@ -714,10 +722,10 @@ classdef PronyMethod < handle
             
             Amplitudes = zeros(1,L);
             [~,I] = sort(abs(C),'descend');
-            Amplitudes(1:length(I)) = C(I);
+            Amplitudes(1:length(I)) = C(I); 
             
             Wavenumbers = zeros(1,L);
-            Wavenumbers(1:length(I)) = kappa(I);
+            Wavenumbers(1:length(I)) = kappa(I); 
         end
         
         function [AX] = ArrowPlotComplexDomain(AX,Data)
