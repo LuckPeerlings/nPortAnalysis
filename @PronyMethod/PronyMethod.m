@@ -216,7 +216,7 @@ classdef PronyMethod < handle
         function obj = TestClass(obj)
             % Set the properties of the class
             
-            obj.Epsilon = 1-1e-10;  
+            obj.Epsilon = 0.65; %1-1e-10;  
             
             
             obj.MicEqPositions = 0:0.1:1;
@@ -239,9 +239,9 @@ classdef PronyMethod < handle
             A = [10-10i,5+9i,-5-6i,-5+4i,2+2i,1-1i];
 %             
               
-            k = k(1:2)
-            A = A(1:2)
-            k = [4.48291066436601 - 0.0232247424295838i;5.41782308166276 - 0.0252505740248546i] *5*0.055;
+            k = k(1:2);
+            A = A(1:2);
+%             k = [4.48291066436601 - 0.0232247424295838i;5.41782308166276 - 0.0252505740248546i] *5*0.055;
             
             %Determine pressure with the above exponentials at the
             %positions X.            
@@ -249,7 +249,7 @@ classdef PronyMethod < handle
             for ii = 1:length(k) %NrModes
                 Pressure = Pressure + A(ii) * exp(1i * k(ii) * obj.MicPositions);
             end
-            SNR = 0.0001;
+            SNR = 0.05;
             L = length(Pressure);
             E = mean((abs(Pressure)).^2);
             noise = sqrt(SNR * E / 2) .* (randn(1,L)); % + 1i.*randn(L,1));
@@ -658,6 +658,8 @@ classdef PronyMethod < handle
             
             if M == 0
                 M = 1;
+            elseif M > L
+                M = L;
             end
             
             % Now, the problem can be written with only the selected modes.
