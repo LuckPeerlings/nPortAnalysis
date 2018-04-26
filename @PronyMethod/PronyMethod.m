@@ -37,13 +37,13 @@ classdef PronyMethod < handle
     methods
         %Empty Constructor 
         %Constructor
-        function obj = PronyMethod(Frequency,P,MicSpacing,NrModes,Parameter)
+        function obj = PronyMethod(Frequency,P,MicSpacing,NrModes,Epsilon,Method)
             if nargin > 1 
                 obj.Frequency = Frequency; 
                 obj.P = P;
                 obj.MicSpacing = MicSpacing;
                 obj.NrModes = NrModes;
-                obj.Epsilon = 1-1e-10; % This value of Epsilon is found to function best.
+                obj.Epsilon = Epsilon; %1-1e-10; % This value of Epsilon is found to function best.
                 obj.Method = Method;
             elseif nargin == 1
                 obj.TestFunctionNicolas
@@ -249,7 +249,11 @@ classdef PronyMethod < handle
             for ii = 1:length(k) %NrModes
                 Pressure = Pressure + A(ii) * exp(1i * k(ii) * obj.MicPositions);
             end
-            obj.P = Pressure + sqrt(sum(Pressure.^2))*0.1*randn(1,length(Pressure));
+            SNR = 0.0001;
+            L = length(Pressure);
+            E = mean((abs(Pressure)).^2);
+            noise = sqrt(SNR * E / 2) .* (randn(1,L)); % + 1i.*randn(L,1));
+            obj.P = Pressure + noise;
             
             [equiPressure] = PronyMethod.equispacing(obj.MicPositions,obj.MicEqPositions,obj.P.',length(obj.P),12.3);
             %Approximate the function values on a randomized non-equispaced grid
@@ -705,10 +709,10 @@ classdef PronyMethod < handle
             
             Amplitudes = zeros(1,L);
             [~,I] = sort(abs(C),'descend');
-            Amplitudes(1:length(I)) = C(I);
+            Amplitudes(1:length(I)) = C(I); 
             
             Wavenumbers = zeros(1,L);
-            Wavenumbers(1:length(I)) = kappa(I);
+            Wavenumbers(1:length(I)) = kappa(I); 
         end
         
         function [AX] = ArrowPlotComplexDomain(AX,Data)
