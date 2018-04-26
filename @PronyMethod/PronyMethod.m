@@ -104,7 +104,7 @@ classdef PronyMethod < handle
         %function to determine whether the equispacing function works well
         
         %different signals to be tested 
-         X_test=0.01+transpose(0:0.055:5*0.055);
+        X_test=0.01+transpose(0:0.055:5*0.055);
         t= transpose(0:0.01:1);
         func = @(x) exp(1i*(-11.510242292516846 + 6.292327191264097i)*x);
         Testsignal=func(X_test);
