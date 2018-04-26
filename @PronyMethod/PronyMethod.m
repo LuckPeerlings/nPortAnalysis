@@ -114,9 +114,17 @@ classdef PronyMethod < handle
         %function to determine whether the equispacing function works well
         
         %different signals to be tested 
-         
-        X_test=0.01+transpose(0:0.055:5*0.055);
+        obj.MicEqPositions = 0:0.05:5*0.05;
+        obj.MicSpacing = obj.MicEqPositions(2)-obj.MicEqPositions(1);
+            
+        obj.MicPositions = obj.MicEqPositions;
+        obj.MicPositions(2:end-1) = obj.MicEqPositions(2:end-1) + 0.01*obj.MicSpacing/2*rand(1,length(obj.MicPositions)-2); 
+        
+        X_test=transpose(obj.MicPositions);
         t= transpose(0:0.01:1);
+        equiX= transpose(obj.MicEqPositions);
+        equigrid=t;
+        
         func = @(x) exp(1i*(-11.510242292516846 + 6.292327191264097i)*x);
         Testsignal=func(X_test);
         Testsignal2=func(t);
@@ -126,8 +134,8 @@ classdef PronyMethod < handle
         % 3. Parameter: Value of L: K>=L>=N with N= nonharmonic bandwidth
         % 4. Parameter: Vaue of b:  Variance of the gaussian
         
-        [equiPressure, equiX] =PronyMethod.equispacing(X_test,Testsignal,6,12.3);
-        [Testdata, equigrid] =PronyMethod.equispacing(t,Testsignal2,99,12.3);
+        [equiPressure] =PronyMethod.equispacing(X_test,equiX,Testsignal,6,12.3);
+        [Testdata] =PronyMethod.equispacing(t,equigrid,Testsignal2,99,12.3);
         
 %        MSE of the approximated Data and the Testdata
          error=equiPressure-func(equiX);
@@ -194,14 +202,14 @@ classdef PronyMethod < handle
         kx=[4.48291066436601 - 0.0232247424295838i;5.41782308166276 - 0.0252505740248546i;6.34711835706620 - 0.0271515381332884i;7.27292078959503 - 0.0289422972352744i;8.19639320338978 - 0.0306373246438771i;9.11822807268444 - 0.0322490790633878i;10.0388646289507 - 0.0337879280000863i;10.9585955258497 - 0.0352624496801973i;11.8776236209035 - 0.0366797698925568i;12.7960941782502 - 0.0380458519566265i;13.7141140953456 - 0.0393657289147092i;14.6317638826141 - 0.0406436852143972i;15.5491054014463 - 0.0418833981827764i;16.4661870190230 - 0.0430880485163045i;17.3830471353964 - 0.0442604071291219i;18.2997166540144 - 0.0454029039623454i;19.2162207483640 - 0.0465176829647735i;20.1325801487590 - 0.0476066463992921i;21.0488120952079 - 0.0486714908444128i;21.9649310535897 - 0.0497137366808734i;22.8809492612396 - 0.0507347524250974i;23.7968771477129 - 0.0517357749536686i;24.7127236629481 - 0.0527179264258585i;25.6284965358633 - 0.0536822285329635i;26.5442024800763 - 0.0546296145681435i;27.4598473590062 - 0.0555609397073330i;28.3754363194589 - 0.0564769898124638i;29.2909739005355 - 0.0573784890067363i;30.2064641230508 - 0.0582661062236577i;31.1219105634366 - 0.0591404608938080i;32.0373164152010 - 0.0600021279033990i;32.9526845403354 - 0.0608516419348758i;33.8680175125510 - 0.0616895012807165i;34.7833176538282 - 0.0625161712061832i;35.6985870654663 - 0.0633320869242929i;36.6138276545808 - 0.0641376562360900i];
         b=linspace(1,100,100);
         nn=length(kx);
-        predicted=zeros(6,length(b),nn);
-        real1=zeros(6,length(b),nn);
+        predicted=zeros(length(X_test),length(b),nn);
+        real1=zeros(length(X_test),length(b),nn);
         fonc = @(x,y) exp(1i*(y)*x);
         
         
         for bb=1:length(b)
             for kk=1:nn
-            [predicted(:,bb,kk),~]=PronyMethod.equispacing(X_test,fonc(X_test,kx(kk)),6,b(bb));
+            [predicted(:,bb,kk)]=PronyMethod.equispacing(X_test,equiX,fonc(X_test,kx(kk)),length(X_test),b(bb));
             real1(:,bb,kk)=fonc(X_test,kx(kk));
             end
         end
@@ -209,9 +217,9 @@ classdef PronyMethod < handle
         handover=sqrt(dot(argument,argument));
         mse=(1/nn)*dot(sqrt(handover),sqrt(handover),3);
         
-        figure;
+        figure
         plot(b,mse)
-       end
+        end
         
         function obj = TestClass(obj)
             % Set the properties of the class
@@ -250,10 +258,12 @@ classdef PronyMethod < handle
             end
             obj.P = Pressure + 0*randn(1,length(Pressure));
             
-            [equiPressure] = PronyMethod.equispacing(obj.MicPositions,obj.MicEqPositions,obj.P.',length(obj.P),12.3);
+            [equiPressure] = PronyMethod.equispacing(obj.MicPositions.',obj.MicEqPositions.',obj.P.',length(obj.P),12.3);
             %Approximate the function values on a randomized non-equispaced grid
+           
+            
                         
-           [C, kappa] = PronyMethod.BasicPronyMethod(equiPressure.',obj.MicSpacing,obj.NrModes,obj.Epsilon);
+            [C, kappa] = PronyMethod.BasicPronyMethod(equiPressure.',obj.MicSpacing,obj.NrModes,obj.Epsilon);
             [C, kappa] = PronyMethod.ESPRIT(equiPressure.',obj.MicSpacing,obj.NrModes,obj.Epsilon);
 
             %Sort the modes by amplitude
@@ -755,21 +765,31 @@ classdef PronyMethod < handle
          %nonequispaced steps and transforms it to a equispaced stepsized
          
          % Input 
-         % 1. Parameter: KxN Vector of space locations
-         % 2. Parameter: KxN Vector of testfunction
-         % 3. Parameter: Value of L: K>=L>=N with N= nonharmonic bandwidth
-         % 4. Parameter: b= Variance of the gaussian
+         % 1. Parameter: Kx1 Vector of space locations, K= number nodes 
+         % 2. Parameter: Kx1 Vector of equispace locations
+         % 3. Parameter: Kx1 Vector of testfunction
+         % 4. Parameter: Value of L: K>=L>=N with N= nonharmonic bandwidth 
+         % 5. Parameter: b= Variance of the gaussian
         
          % Output
          % 1. Parameter: Kx1 vector equiPressure= approximated Pressure with homogenious
          %               step size 
-         % 2. Parameter: Kx1 vector equiX= vector of new homogenious step size
          
            
          % 1) Initialization of parameters for the algorithm
          N=length(X);
                  
-         % 2) Preconditioning of necessary functions
+         % error exceptions to get the right dimensions 
+         if  isrow(X)
+             error('X has to be column vector');
+         end
+         
+         if  isrow(equiX)
+             error('equiX has to be column vector');
+         end
+         if  isrow(P)
+             error('P has to be column vector');
+         end
          
              
          %Preparing the window function and the stepsize     
@@ -806,7 +826,7 @@ classdef PronyMethod < handle
         function truncatedphi= twindow(argument,b,n)
             % this functions sets up the truncated window function for a
             % gaussian bell window function 
-            % inputs: argument: Matrix of different locations in space per node
+            % inputs: argument:  NxL Matrix of different locations in space per node
             %         b: Variance of the gaussian
             %         n: number of parameters h
            
