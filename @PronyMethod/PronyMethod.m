@@ -216,14 +216,14 @@ classdef PronyMethod < handle
         function obj = TestClass(obj)
             % Set the properties of the class
             
-            obj.Epsilon = 1-1e-10;% 0.999;%1-1e-10;%0.01;%1-1e-10;     
+            obj.Epsilon = 1-1e-10;  
             
             
             obj.MicEqPositions = 0:0.1:1;
             obj.MicSpacing = obj.MicEqPositions(2)-obj.MicEqPositions(1);
             
             obj.MicPositions = obj.MicEqPositions;
-            obj.MicPositions(2:end-1) = obj.MicEqPositions(2:end-1) + 0.01*obj.MicSpacing/2*rand(1,length(obj.MicPositions)-2);
+            obj.MicPositions(2:end-1) = obj.MicEqPositions(2:end-1) + 0.00*obj.MicSpacing/2*rand(1,length(obj.MicPositions)-2);
             
             obj.NrModes = floor(length(obj.MicPositions)/2);
             
@@ -241,6 +241,7 @@ classdef PronyMethod < handle
               
             k = k(1:2)
             A = A(1:2)
+            k = [4.48291066436601 - 0.0232247424295838i;5.41782308166276 - 0.0252505740248546i] *5*0.055;
             
             %Determine pressure with the above exponentials at the
             %positions X.            
@@ -248,12 +249,12 @@ classdef PronyMethod < handle
             for ii = 1:length(k) %NrModes
                 Pressure = Pressure + A(ii) * exp(1i * k(ii) * obj.MicPositions);
             end
-            obj.P = Pressure + 0*randn(1,length(Pressure));
+            obj.P = Pressure + sqrt(sum(Pressure.^2))*0.1*randn(1,length(Pressure));
             
             [equiPressure] = PronyMethod.equispacing(obj.MicPositions,obj.MicEqPositions,obj.P.',length(obj.P),12.3);
             %Approximate the function values on a randomized non-equispaced grid
                         
-           [C, kappa] = PronyMethod.BasicPronyMethod(equiPressure.',obj.MicSpacing,obj.NrModes,obj.Epsilon);
+%             [C, kappa] = PronyMethod.BasicPronyMethod(equiPressure.',obj.MicSpacing,obj.NrModes,obj.Epsilon);
             [C, kappa] = PronyMethod.ESPRIT(equiPressure.',obj.MicSpacing,obj.NrModes,obj.Epsilon);
 
             %Sort the modes by amplitude
