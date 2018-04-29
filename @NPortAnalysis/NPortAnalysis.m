@@ -111,7 +111,7 @@ classdef NPortAnalysis  < matlab.mixin.SetGet
                     end
                 end                           
                 Sq = Mach_Min*S*inv(Mach_Plus);
-                P_dis(ff,:,:) = eye(2)-transp(conj(Sq))*Sq;
+                P_dis(ff,:,:) = eye(2)-transpose(conj(Sq))*Sq;
             end
                        
             for ii = 1:obj.NrPorts
