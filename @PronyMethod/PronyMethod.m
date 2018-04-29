@@ -20,7 +20,7 @@ classdef PronyMethod < handle
         P              % Matrix of the measured complex pressures, of size (number of frequencies used) * (number of measurement points)
         
         
-        NrModes        % Integer, maximum number of modes we calculate        
+        NrModes        % Integer, maximum number of modes we want to calculate        
         WaveNumber     % Row vector of the wavenumber corresponding to the first mode for each frequency used       
         Epsilon        % Real number between 0 and 1, see description of its use in BasicPronyMethod, MatrixPencil and ESPRIT
         
@@ -37,18 +37,22 @@ classdef PronyMethod < handle
     methods
         %Empty Constructor 
         %Constructor
-        function obj = PronyMethod(Frequency,P,MicSpacing,NrModes,Epsilon,Method)
+        function obj = PronyMethod(Frequency,P,MicPositions,MicEqPositions,NrModes,Epsilon)
             if nargin > 1 
                 obj.Frequency = Frequency; 
                 obj.P = P;
-                obj.MicSpacing = MicSpacing;
+                obj.MicPositions = MicPositions;
+                obj.MicEqPositions = MicEqPositions;
                 obj.NrModes = NrModes;
                 obj.Epsilon = Epsilon; %1-1e-10; % This value of Epsilon is found to function best.
-                obj.Method = Method;
+                if length(uniquetol(diff(MicEqPositions)))>1
+                    error('The given equidistant microphone positions are not equidistant')
+                end
+                obj.MicSpacing = obj.MicEqPositions(2)-MicEqPositions(1);
             elseif nargin == 1
                 obj.TestFunctionNicolas
             else                
-                obj.TestClass;
+                %obj.TestClass;
             end
         end
                      
@@ -58,7 +62,10 @@ classdef PronyMethod < handle
             %The default method is the ESPRIT method.
             if nargin == 1                
                 Method = 'ESPRIT';
+            else
+                obj.Method = Method;                
             end
+            
             for ff = 1:size(obj.P,2)
                 if strcmp(Method, 'ESPRIT')
                     [obj.AllAmplitudes(:,ff),obj.AllWaveNumbers(:,ff)] = obj.ESPRIT(obj.P(:,ff).',obj.MicSpacing,obj.NrModes, obj.Epsilon); % 1e-10
@@ -78,7 +85,7 @@ classdef PronyMethod < handle
             figure;
             AX  = axes();
             hold on;
-            PronyMethod.ArrowPlotComplexDomain(AX,obj.kappa(nn,I))
+            PronyMethod.ArrowPlotComplexDomain(AX,obj.AllWaveNumbers(nn,I))
             axis square;
             
             ylabel('Imag. part of wavenumber')  
@@ -224,16 +231,16 @@ classdef PronyMethod < handle
         function obj = TestClass(obj)
             % Set the properties of the class
             
-            obj.Epsilon = 0.65; %1-1e-10;  
+            obj.Epsilon = 15e-2; 1e-10; %1-1e-10;  
             
             
             obj.MicEqPositions = 0:0.1:1;
             obj.MicSpacing = obj.MicEqPositions(2)-obj.MicEqPositions(1);
             
             obj.MicPositions = obj.MicEqPositions;
-            obj.MicPositions(2:end-1) = obj.MicEqPositions(2:end-1) + 0.00*obj.MicSpacing/2*rand(1,length(obj.MicPositions)-2);
+            obj.MicPositions(2:end-1) = obj.MicEqPositions(2:end-1) + 1*obj.MicSpacing/2*rand(1,length(obj.MicPositions)-2);
             
-            obj.NrModes = floor(length(obj.MicPositions)/2);
+            obj.NrModes = floor(length(obj.MicPositions)/2)-3;
             
             %Function to determine whether the prony method is implemented
             %correctly
@@ -243,13 +250,12 @@ classdef PronyMethod < handle
             
             %The wavenumbers are be sorted using the size of the absolute
             %value.
-            k = [6+3i,3+6i,15+12i,9,18i, 4.5+4.5i];
-            A = [10-10i,5+9i,-5-6i,-5+4i,2+2i,1-1i];
+            k = [3-0.3i,3-0.2i,15-0.12i,9, 4.5-0.45i];
+            A = [10-10i,5+10i,-5-6i,-5+4i,2+2i,1-1i];
 %             
               
-            k = k(1:2);
-            A = A(1:2);
-%             k = [4.48291066436601 - 0.0232247424295838i;5.41782308166276 - 0.0252505740248546i] *5*0.055;
+            k = k(1:1);
+            A = A(1:1);
             
             %Determine pressure with the above exponentials at the
             %positions X.            
@@ -260,9 +266,10 @@ classdef PronyMethod < handle
             SNR = 0.05;
             L = length(Pressure);
             E = mean((abs(Pressure)).^2);
-            noise = sqrt(SNR * E / 2) .* (randn(1,L)); % + 1i.*randn(L,1));
+            noise = sqrt(SNR * E / 2) .* (randn(1,L) + 1i.*randn(1,L));
             obj.P = Pressure + noise;
-            
+            size(obj.P)
+            isrow(obj.P)
             [equiPressure] = PronyMethod.equispacing(obj.MicPositions.',obj.MicEqPositions.',obj.P.',length(obj.P),12.3);
             %Approximate the function values on a randomized non-equispaced grid
            
@@ -621,6 +628,9 @@ classdef PronyMethod < handle
             % The principle of this method is explained on pages 1032 and
             % 1033 of [D. Potts, M. Tasche] (see reference under "methods 
             % (Static)", above). The algorithm is displayed at page 1033.
+            if ~isrow(P)
+                error('Pressure vector has to be a row vector')
+            end
             
             N = length(P)/2;
             if L > N
@@ -647,32 +657,19 @@ classdef PronyMethod < handle
             
             W = ctranspose(W);
             
-            % In order to discriminate the lowest modes, a variable
-            % "energy", corresponding to a proportion of the value of the 
-            % sum of all of the diagonal elements of D, is created. The 
-            % highest elements (in terms of absolute value) are chosen, 
-            % until the sum of the chosen elements reaches a certain 
-            % amount of energy (epsilon). This very operation is used in
-            % the three methods.
+            % Truncate the SVD such that sigma(M+1) < epsilon*sigma(1),
+            % Rebuild the matrix with M modes.
             
-            sigma = diag(D);
-            sigma = abs(sigma);
-            sum_sigma = sum(sigma);
-            sigma = sigma/sum_sigma;
-            energy = 0;
-            
-            M = 0;
-            while M < length(sigma) && energy < epsilon
-                M = M + 1;
-                energy = energy + sigma(M);
+            sigma = diag(D)
+            M = 1;
+            epsilon*sigma(1)
+            while sigma(M) >= epsilon*sigma(1) && M < length(sigma)
+                M = M+1;
+
             end
+            M = M-1
             
-            if M == 0
-                M = 1;
-            elseif M > L
-                M = L;
-            end
-            
+                                    
             % Now, the problem can be written with only the selected modes.
             % For this, the matrix W has to be re-written :
             
