@@ -21,13 +21,13 @@ classdef MonteCarlo < handle
         function obj = CalculateUncertainty(obj)
             obj = GetListInputUncertainVariables(obj);
             obj = GetListOutputUncertainVariables(obj);
-            obj = SimulateVariance(obj);
-       
+            obj = SimulateVariance(obj);       
             obj = SetOutput(obj);
         end
         function obj = SetOutput(obj)
             %Function to save the output to the output properties           
-            for ii = 1:length(obj.UVOutputList)                
+            for ii = 1:length(obj.UVOutputList)                  
+                obj.UVOutputList(ii).UV.calculateTotalUncertainty;
                 if isempty(obj.UVOutputList(ii).StructPos)
                     obj.Output.( obj.OutputProperties{obj.UVOutputList(ii).Pos} ) = obj.UVOutputList(ii).UV;
                 else
@@ -37,13 +37,11 @@ classdef MonteCarlo < handle
                     obj.Output.( obj.OutputProperties{obj.UVOutputList(ii).Pos} ) = setfield( obj.Output.( obj.OutputProperties{obj.UVOutputList(ii).Pos} ),obj.UVOutputList(ii).StructPos{:},obj.UVOutputList(ii).UV);
                 end
             end
-        end
-        
+        end        
         obj = GetListInputUncertainVariables(obj); %Fixed
         obj = GetListOutputUncertainVariables(obj);
         Output = UpdateSolution(obj,Input); %Fixed
         obj = SimulateVariance(obj);
-
     end
     methods (Static)
         LocationName = FindObjectInStructure(Input,ObjectName,varargin)

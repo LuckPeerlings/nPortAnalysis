@@ -1,27 +1,35 @@
 function obj = SimulateVariance(obj)
 
-%Determine the mean values of the output
-BaseOutput = UpdateSolution(obj,obj.BaseInput);
-for nn = 1:length(obj.UVOutputList)   
-    Pos = obj.UVOutputList(nn).Pos;
-    if isempty(obj.UVOutputList(nn).StructPos)
-        SingleOutputValue = BaseOutput{Pos };
-    else 
-        SingleOutputValue = getfield(BaseOutput{Pos}, obj.UVOutputList(nn).StructPos{:});
+    %Determine the mean values of the output
+    BaseOutput = UpdateSolution(obj,obj.BaseInput);
+    for nn = 1:length(obj.UVOutputList)   
+        Pos = obj.UVOutputList(nn).Pos;
+        if isempty(obj.UVOutputList(nn).StructPos)
+            SingleOutputValue = BaseOutput{Pos };
+        else 
+            SingleOutputValue = getfield(BaseOutput{Pos}, obj.UVOutputList(nn).StructPos{:});
+        end
+        obj.UVOutputList(nn).UV.Value = SingleOutputValue;  
     end
-    obj.UVOutputList(nn).UV.Value = SingleOutputValue;  
-end
 
-%Perform the Cholesky decomposition of the covariance matrix and safe it.
-%This to iterate faster when performing the MonteCarlo simulation
-L = GetCholeskyDecomposition(obj);
-
-for II = 1:obj.Iterations  
-    PerturbedInput = CreatePerturbedValues(obj,L);
-    PerturbedOutput = UpdateSolution(obj,PerturbedInput);
-    obj = UpdateVariance(obj,PerturbedOutput,obj.TotalIterations+II);
-end
-obj.TotalIterations = obj.TotalIterations + obj.Iterations;
+    %Perform the Cholesky decomposition of the covariance matrix and safe it.
+    %This to iterate faster when performing the MonteCarlo simulation
+    L = GetCholeskyDecomposition(obj);
+    nn = 0;
+    PrintRatio = 0.1;
+    for II = 1:obj.Iterations  
+        PerturbedInput = CreatePerturbedValues(obj,L);
+        PerturbedOutput = UpdateSolution(obj,PerturbedInput);
+        obj = UpdateVariance(obj,PerturbedOutput,obj.TotalIterations+II);
+        
+        if (II-nn*obj.Iterations*PrintRatio) / obj.Iterations > PrintRatio
+            nn = nn + 1;
+            fprintf('%3.1f %% Percentage of calculations done  \n',II/obj.Iterations*100)
+        end
+    end
+    obj.TotalIterations = obj.TotalIterations + obj.Iterations;
+    
+    
 end
 
 
@@ -151,7 +159,7 @@ for nn = 1:length(obj.UVOutputList)
     for mm = 1:size(obj.UVOutputList(nn).UV.Value,2)
         Theta = angle(obj.UVOutputList(nn).UV.Value(1,mm));
         R = [cos(-Theta), -sin(-Theta); sin(-Theta), cos(-Theta)];
-        AlignedUCMatrix = R*reshape(Var(mm,:),2,2)*transp(R);
+        AlignedUCMatrix = R*reshape(Var(mm,:),2,2)*transpose(R);
         obj.UVOutputList(nn).UV.AlignedVar(1,mm,1:4) = AlignedUCMatrix(:);
     end
     
