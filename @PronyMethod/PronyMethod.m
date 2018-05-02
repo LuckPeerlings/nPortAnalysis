@@ -1,4 +1,4 @@
-classdef PronyMethod < handle
+classdef PronyMethod < matlab.mixin.SetGet
     %This class is used to determine the impedance using the so called
     %Prony method.
     %The details of this method are taken from the paper
@@ -18,13 +18,13 @@ classdef PronyMethod < handle
     properties
         Frequency      % Column vector of the frequencies used during the measurement, in increasing order 
         P              % Matrix of the measured complex pressures, of size (number of frequencies used) * (number of measurement points)
-        
+        EqP            % Pressures on equispaced grid
         
         NrModes        % Integer, maximum number of modes we want to calculate        
         WaveNumber     % Row vector of the wavenumber corresponding to the first mode for each frequency used       
         Epsilon        % Real number between 0 and 1, see description of its use in BasicPronyMethod, MatrixPencil and ESPRIT
         
-        Method         % Character string, name of the method used to determine the amplitudes and wavenumbers of each mode of the complex signal (choice between 'BasicPronyMethod', 'MatrixPencil' and 'ESPRIT')
+        Method = 'ESPRIT';         % Character string, name of the method used to determine the amplitudes and wavenumbers of each mode of the complex signal (choice between 'BasicPronyMethod', 'MatrixPencil' and 'ESPRIT')
         AllWaveNumbers % Matrix of the wavenumbers of each mode and for each frequency used, of size (NrModes) * (number of frequencies used)
         AllAmplitudes  % Matrix of the amplitudes of each mode and for each frequency used, of size (NrModes) * (number of frequencies used) 
         
@@ -55,24 +55,27 @@ classdef PronyMethod < handle
                 %obj.TestClass;
             end
         end
-                     
+        function obj = EquispaceData(obj)
+            for ii = 1:size(obj.P,2)
+                [EquiPressure(:,ii)] = PronyMethod.equispacing(obj.MicPositions,obj.MicEqPositions,obj.P(:,ii),length(obj.P(:,ii)),12.3);
+            end
+            obj.EqP = EquiPressure;
+        end
         function obj = DetermineWaveNumber(obj,Method)
             %Calculating the wavenumber and the amplitude of the modes for
             %each frequency
             %The default method is the ESPRIT method.
-            if nargin == 1                
-                Method = 'ESPRIT';
-            else
-                obj.Method = Method;                
+            if nargin == 1    
+                Method = obj.Method;                
             end
             
-            for ff = 1:size(obj.P,2)
+            for ff = 1:size(obj.EqP,2)
                 if strcmp(Method, 'ESPRIT')
-                    [obj.AllAmplitudes(:,ff),obj.AllWaveNumbers(:,ff)] = obj.ESPRIT(obj.P(:,ff).',obj.MicSpacing,obj.NrModes, obj.Epsilon); % 1e-10
+                    [obj.AllAmplitudes(:,ff),obj.AllWaveNumbers(:,ff)] = obj.ESPRIT(obj.EqP(:,ff).',obj.MicSpacing,obj.NrModes, obj.Epsilon); % 1e-10
                 elseif strcmp(Method, 'MatrixPencil')
-                    [obj.AllAmplitudes(:,ff),obj.AllWaveNumbers(:,ff)] = obj.MatrixPencil(obj.P(:,ff).',obj.MicSpacing,obj.NrModes, obj.Epsilon); % 1e-10
+                    [obj.AllAmplitudes(:,ff),obj.AllWaveNumbers(:,ff)] = obj.MatrixPencil(obj.EqP(:,ff).',obj.MicSpacing,obj.NrModes, obj.Epsilon); % 1e-10
                 elseif strcmp(Method, 'Basic')
-                    [obj.AllAmplitudes(:,ff),obj.AllWaveNumbers(:,ff)] = obj.BasicPronyMethod(obj.P(:,ff).',obj.MicSpacing,obj.NrModes, obj.Epsilon);
+                    [obj.AllAmplitudes(:,ff),obj.AllWaveNumbers(:,ff)] = obj.BasicPronyMethod(obj.EqP(:,ff).',obj.MicSpacing,obj.NrModes, obj.Epsilon);
                 end
             end
             obj.WaveNumber = obj.AllWaveNumbers(1,:);
@@ -660,14 +663,13 @@ classdef PronyMethod < handle
             % Truncate the SVD such that sigma(M+1) < epsilon*sigma(1),
             % Rebuild the matrix with M modes.
             
-            sigma = diag(D)
+            sigma = diag(D);
             M = 1;
-            epsilon*sigma(1)
             while sigma(M) >= epsilon*sigma(1) && M < length(sigma)
                 M = M+1;
 
             end
-            M = M-1
+            M = M-1;
             
                                     
             % Now, the problem can be written with only the selected modes.
@@ -731,7 +733,7 @@ classdef PronyMethod < handle
                 if ii == 1
                 quiver(real(Data(ii)),imag(Data(ii)),...
                        real(Data(ii+1)-Data(ii)), ...
-                       imag(Data(ii+1)-Data(ii)),0,'o','filled','MarkerFaceColor','r','MaxHeadSize',0.5);
+                       imag(Data(ii+1)-Data(ii)),0,'ko','filled','MarkerFaceColor','r','MaxHeadSize',0.5);
                 else
                                     quiver(real(Data(ii)),imag(Data(ii)),...
                        real(Data(ii+1)-Data(ii)), ...
@@ -813,17 +815,16 @@ classdef PronyMethod < handle
          %windowfunction with eiquispaced input
          for ll=1:n
             augmentedX(:,ll)=((equiX-max(X)/2)/max(X))-((1/n)*l(ll)); 
-         end
-         
+         end         
          
          %truncated window function 
          truncatedphi= PronyMethod.twindow(argumentX,b,n);
          truncatedphi2= PronyMethod.twindow(augmentedX,b,n);
-         
-%        Computation of the support coefficients h
+
+         % Computation of the support coefficients h
          h=truncatedphi\P; 
-         
-%        Computation of the pressure with equispaced nodes
+
+        % Computation of the pressure with equispaced nodes
          equiPressure = truncatedphi2*h;
 
         end
@@ -838,6 +839,7 @@ classdef PronyMethod < handle
         
             % Initialization of parameters
             truncatedphi=zeros(size(argument,1),n);  
+
             %truncated phi is a matrix Nxn  containing the different values
             %of the gaussian bell depending on the parameters b,n
             for ii=1:size(argument,1)
