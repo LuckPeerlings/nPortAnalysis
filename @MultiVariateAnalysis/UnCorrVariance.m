@@ -22,13 +22,13 @@ for ii = 1:length(obj.UVOutputList)
                 if size(UVInput.UCMatrix,2) == 1                    
                     UCMatrix = reshape(UVInput.UCMatrix(kk,1,:),2,2);
                     CorrelationMatrix = reshape(UVInput.CorrelationMatrix(kk,1,:),2,2);
-                else                    
+                else    
                     UCMatrix = reshape(UVInput.UCMatrix(kk,mm,:),2,2);
                     CorrelationMatrix = reshape(UVInput.CorrelationMatrix(kk,mm,:),2,2);
                 end
                 %Calculate and save the covariance matrix for this specific
                 %contribution
-                OutputUCMatrix = SensitivityMatrix *  UCMatrix * CorrelationMatrix * transp(SensitivityMatrix * UCMatrix);
+                OutputUCMatrix = SensitivityMatrix *  UCMatrix * CorrelationMatrix * transpose(SensitivityMatrix * UCMatrix);
                 UVOutput.Var(ll,mm,1:4) = OutputUCMatrix(:);
                 if length(UVInput.Group) == 1
                     UVOutput.Group{ll} = UVInput.Group;
@@ -42,7 +42,7 @@ for ii = 1:length(obj.UVOutputList)
                 %Numbers, Dylan F. Willians, C.m. Wand and Uwe Arz
                 Theta = angle(UVOutput.Value(1,mm));
                 R = [cos(-Theta), -sin(-Theta); sin(-Theta), cos(-Theta)];
-                AlignedUCMatrix = R*OutputUCMatrix*transp(R);
+                AlignedUCMatrix = R*OutputUCMatrix*transpose(R);
                 UVOutput.AlignedVar(ll,mm,1:4) = AlignedUCMatrix(:);
             end
             ll = ll + 1;

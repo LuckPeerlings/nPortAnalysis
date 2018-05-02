@@ -32,7 +32,6 @@ for nn = 1:length(obj.UVInputList)
         if PerturbedValue_Real(jj) == 0;                    
             PerturbedValue_Real(jj) = PERTURBATION;
             Perturbation = PERTURBATION;
-            disp('test')
         end
         if isempty(obj.UVInputList(nn).StructPos)                    
             PerturbedInput{ii}{2} = PerturbedValue_Real;

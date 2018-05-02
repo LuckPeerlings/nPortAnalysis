@@ -24,9 +24,13 @@ classdef MultiVariateAnalysis < handle
             obj = CorrVariance(obj);
             obj = SetOutput(obj);
         end
+        
         function obj = SetOutput(obj)
             %Function to save the output to the output properties           
-            for ii = 1:length(obj.UVOutputList)                
+            for ii = 1:length(obj.UVOutputList)   
+                %Calculate the total uncertainty for each of the uncertain
+                %variables.
+                obj.UVOutputList(ii).UV.calculateTotalUncertainty;
                 if isempty(obj.UVOutputList(ii).StructPos)
                     obj.Output.( obj.OutputProperties{obj.UVOutputList(ii).Pos} ) = obj.UVOutputList(ii).UV;
                 else
