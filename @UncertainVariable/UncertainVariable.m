@@ -3,6 +3,7 @@ classdef UncertainVariable < handle
         Value       %The mean value of the measurand
         MeanValue   %The mean value obtained from the Monte Carlo
         UCMatrix    %The (co) variance (matrix) for a real or oomplex matrix
+        AlignedUCMatrix
         CorrelationMatrix
         CorrVar 
         DOF         %The degrees of freedom of the variable
@@ -10,12 +11,14 @@ classdef UncertainVariable < handle
         Group       = {'Base'}; %Group the uncertain variable belongs to, used to group uncertainties together
         Distribution %Name of the distribution (used in monte carlo simulations)
         Value_Iteration
+        
     end    
     properties (SetAccess = public)
         %These properties are set internally and can be obtained but not
         %set
         CrossCorrelation    %Specifies those variables which are partially correlated to this variable
-        Type
+%         Type = 'Input'
+Type
     end    
     properties
         %Sensitivity to each input variable 
@@ -28,7 +31,6 @@ classdef UncertainVariable < handle
         Sensitivity_InputList
         Sensitivity_Group
         d2ydx2
-        error
         Index
         IndexList
         
@@ -145,6 +147,7 @@ classdef UncertainVariable < handle
                 error('The fifth input is not a string')
             end
         end
+%         obj.Type = 'Input';
         end
         function obj = setIdentifier(obj,Indentifier)
             if ischar(Indentifier) == size(obj.Value,1)
@@ -175,7 +178,6 @@ classdef UncertainVariable < handle
                  error('The input parameter is not a string')
              end            
         end
-
         function obj = setCorrelation(obj,CorrMatrix,VarName,Index,CorrIndex,StructPos)
             %CorrVar(nn).CorrMatrix{1} Correlation matrix
             %CorrVar(nn).VarName Variabel name
@@ -244,8 +246,56 @@ classdef UncertainVariable < handle
                 nn = nn + 1;
             end
      
-        end       
+        end
         
+        function obj = calculateTotalUncertainty(obj)
+            if strcmp(obj.Type,'Input')
+                error('Cannot calculate the covariance matrix for uncertain variables of the input type');                
+            end
+            obj.AlignedUCMatrix = zeros(length(obj.Value),4);
+            obj.UCMatrix = zeros(length(obj.Value),4);            
+            for ii = 1:size(obj.Var,1)
+                obj.UCMatrix = obj.UCMatrix + squeeze(obj.Var(ii,:,:));       
+                obj.AlignedUCMatrix = obj.AlignedUCMatrix + squeeze(obj.AlignedVar(ii,:,:));   
+            end
+        
+        end
+        function obj = plotRelativeUncertainty(obj)
+            figure
+            for ii = 1:size(obj.UCMatrix,1)
+                AX{ii} = subplot(size(obj.UCMatrix,1),1,ii);
+                set(AX{ii},'xtick',[])
+                set(AX{ii},'xticklabel',[])
+                for jj = 1:size(obj.UCMatrix,2)
+                    CovarianceMatrix = reshape(squeeze(obj.UCMatrix(ii,jj,:)),2,2);
+                    [~,D] = eig(CovarianceMatrix,'vector');
+                    AreaEllipse(jj) = sqrt(D(1)*D(2));
+                end
+                %set(gca,'xtick',[])
+                %set(gca,'xticklabel',[])
+                    semilogy(AreaEllipse(jj)./abs(obj.Value(ii,:)))
+                    grid on
+            end
+        end
+            
+        function obj = plotUncertaintyEllipse(obj,axesHandle)
+            if isreal(obj.Value)
+                error('UncertaintyEllipse can not be plotted for real numbers')
+            end
+            if nargin == 1
+                axeshandle = gca;
+            end
+            for ii=1:size(obj.Value,2)
+            H = fnc_plot_gaussian_ellipsoid(   [real(obj.Value(:,ii)),imag(obj.Value(:,ii))],...
+                                            reshape(obj.UCMatrix(ii,:),[2,2]),2,100,axesHandle);
+                                        set(H,'color',[0.6,0.6,0.6]);
+            end
+        %  plots the distribution specified by 
+        %  mean M and covariance C. The distribution is plotted as an ellipse (in 
+        %  2-d) or an ellipsoid (in 3-d).  By default, the distributions are 
+        %  plotted in the current axes. H is the graphics handle to the plotted 
+        %  ellipse or ellipsoid.
+        end
         
         function removeCorrelation(Position)
         end
@@ -257,9 +307,9 @@ function [UCMatrix,CorrMatrix] = GetCorrUCMatrix(CovarMatrix)
      
     UCMatrix = [sqrt(CovarMatrix(1,1)), 0 , 0, sqrt(CovarMatrix(2,2))];
     
-    if UCMatrix(4) == 0;
+    if UCMatrix(4) == 0
         CorrMatrix = [1, 0,0,0];
-    elseif UCMatrix(1) == 0;
+    elseif UCMatrix(1) == 0
         CorrMatrix = [0, 0,0,1];
     else
         CorrMatrix = [1, CovarMatrix(1,2)/UCMatrix(1), CovarMatrix(2,1)/UCMatrix(4), 1];
