@@ -1,4 +1,4 @@
-classdef PronyMethod < matlab.mixin.SetGet
+classdef PronyMethod < matlab.mixin.Copyable & matlab.mixin.SetGet
     %This class is used to determine the impedance using the so called
     %Prony method.
     %The details of this method are taken from the paper
@@ -15,23 +15,26 @@ classdef PronyMethod < matlab.mixin.SetGet
     %   noise on the input data.
     % - Comment the code with references to the paper where necessary
     
-    properties
+    properties (Access = public)        
         Frequency      % Column vector of the frequencies used during the measurement, in increasing order 
         P              % Matrix of the measured complex pressures, of size (number of frequencies used) * (number of measurement points)
-        EqP            % Pressures on equispaced grid
-        
-        NrModes        % Integer, maximum number of modes we want to calculate        
-        WaveNumber     % Row vector of the wavenumber corresponding to the first mode for each frequency used       
-        Epsilon        % Real number between 0 and 1, see description of its use in BasicPronyMethod, MatrixPencil and ESPRIT
-        
-        Method = 'ESPRIT';         % Character string, name of the method used to determine the amplitudes and wavenumbers of each mode of the complex signal (choice between 'BasicPronyMethod', 'MatrixPencil' and 'ESPRIT')
-        AllWaveNumbers % Matrix of the wavenumbers of each mode and for each frequency used, of size (NrModes) * (number of frequencies used)
-        AllAmplitudes  % Matrix of the amplitudes of each mode and for each frequency used, of size (NrModes) * (number of frequencies used) 
-        
-        %Private properties
         MicPositions   % Microphone positions used in the measurement
         MicEqPositions % Equidistant microphone positions used to evaluate the prony method
+        NrModes        % Integer, maximum number of modes we want to calculate        
+        Epsilon        % Real number between 0 and 1, see description of its use in BasicPronyMethod, MatrixPencil and ESPRIT
+        Method = 'ESPRIT';         % Character string, name of the method used to determine the amplitudes and wavenumbers of each mode of the complex signal (choice between 'BasicPronyMethod', 'MatrixPencil' and 'ESPRIT')
+        Unwrap = true  % Unwrap the real part of the wavenumber if there is a jump
+    end
+    
+    properties (GetAccess = public, SetAccess = protected)     
+        WaveNumber     % Row vector of the wavenumber corresponding to the first mode for each frequency used     
+    end
+   
+    properties (Access = protected)
+        EqP            % Pressures on equispaced grid
         MicSpacing     % Real number, distance between the measurement points
+        AllWaveNumbers % Matrix of the wavenumbers of each mode and for each frequency used, of size (NrModes) * (number of frequencies used)        
+        AllAmplitudes  % Matrix of the amplitudes of each mode and for each frequency used, of size (NrModes) * (number of frequencies used) 
     end
     
     methods
@@ -79,22 +82,41 @@ classdef PronyMethod < matlab.mixin.SetGet
                 end
             end
             obj.WaveNumber = obj.AllWaveNumbers(1,:);
+            
+            if sum(abs(diff(real(obj.WaveNumber).*obj.MicSpacing)) > 0.9*2*pi) > 0
+                warning('The real part of the wavenumber has a phase jump')
+                if obj.Unwrap
+                    disp('Unwrapping the real part of the wavenumber')
+                    obj.WaveNumber = unwrap(real(obj.WaveNumber.*obj.MicSpacing))/obj.MicSpacing + 1i*imag(obj.WaveNumber);
+                end
+            end
+                            
         end
         
         function obj = PlotWaveNumberComplexDomain(obj,ModeNr)
-            nn = ModeNr;
-            
-            [~,I] = sort(obj.Frequency);
+            %Method to plot the wavenumbers in the complex domain. If the
+            %method is called without an argument, the unwrapped wavenumber
+            %is plotted.
+            %Otherwise, the wavenumber obtained directly from the Prony
+            %method is plotted for a specific mode.
+            [~,I] = sort(obj.Frequency);            
+            if nargin == 1 || isempty(ModeNr)
+                ModeNr = 1;
+                WaveNumberPlot = obj.WaveNumber;
+            else
+                WaveNumberPlot = obj.AllWaveNumbers(nn,I);
+            end                               
             figure;
             AX  = axes();
             hold on;
-            PronyMethod.ArrowPlotComplexDomain(AX,obj.AllWaveNumbers(nn,I))
+            PronyMethod.ArrowPlotComplexDomain(AX,WaveNumberPlot)
             axis square;
             
             ylabel('Imag. part of wavenumber')  
             xlabel('Real part of wavenumber')
            
         end
+        
         
         function obj = PlotAmplitude(obj)
             %Function to plot the obtained real and imaginary part of each
@@ -662,14 +684,9 @@ classdef PronyMethod < matlab.mixin.SetGet
             
             % Truncate the SVD such that sigma(M+1) < epsilon*sigma(1),
             % Rebuild the matrix with M modes.
-            
-            sigma = diag(D);
-            M = 1;
-            while sigma(M) >= epsilon*sigma(1) && M < length(sigma)
-                M = M+1;
+            sigma = diag(D);         
+            M = sum(sigma >= epsilon*sigma(1));
 
-            end
-            M = M-1;
             
                                     
             % Now, the problem can be written with only the selected modes.
@@ -728,20 +745,18 @@ classdef PronyMethod < matlab.mixin.SetGet
         end
         
         function [AX] = ArrowPlotComplexDomain(AX,Data)
-            
             for ii = 1:length(Data)-1
                 if ii == 1
                 quiver(real(Data(ii)),imag(Data(ii)),...
                        real(Data(ii+1)-Data(ii)), ...
-                       imag(Data(ii+1)-Data(ii)),0,'ko','filled','MarkerFaceColor','r','MaxHeadSize',0.5);
+                       imag(Data(ii+1)-Data(ii)),0,'Color',[0.6,0.6,0.6],'Marker','o','MarkerSize',3,'MarkerFaceColor','r','MarkerEdgeColor','r','MaxHeadSize',0.5);
                 else
                                     quiver(real(Data(ii)),imag(Data(ii)),...
                        real(Data(ii+1)-Data(ii)), ...
-                       imag(Data(ii+1)-Data(ii)),0,'ko','filled','MaxHeadSize',0.5);
+                       imag(Data(ii+1)-Data(ii)),0,'Color',[0.6,0.6,0.6],'Marker','o','MarkerSize',3,'MarkerFaceColor','k','MarkerEdgeColor','k','MaxHeadSize',0.5);
                 end                
             end
             plot(real(Data(ii+1)),imag(Data(ii+1)),'rx');
-                       
         end
         
         function [H] = Hankel(M, N, s, P)
