@@ -40,11 +40,12 @@ classdef UncertaintyAnalysisProny < MultiVariateAnalysis
             hold on;
             PronyMethod.ArrowPlotComplexDomain(AX,obj.Output.WaveNumber.Value(I))
             axis square;
-            obj.Output.WaveNumber.plotUncertaintyEllipse(AX);
+            obj.Output.WaveNumber.plotUncertaintyEllipse(AX,2,[0.5,0,0]);
             
             ylabel('Imag. part of wavenumber')  
             xlabel('Real part of wavenumber')
         end
+        
         
         
     end
