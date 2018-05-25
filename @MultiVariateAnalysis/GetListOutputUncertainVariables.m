@@ -4,7 +4,6 @@ function obj = GetListOutputUncertainVariables(obj)
 %only the mean values. I.e. the UncertaintyValue class is removed and only
 %the property 'Value' of that class is set.
 BaseInput = obj.Input;
-assignin('base','BaseInput',BaseInput);
 %Determine the input structure without the uncertain variables. The Structure BaseInput contains the all the mean values of the uncertain variables  
 for ii = 1:length(obj.UVInputList)    
     if isempty(obj.UVInputList(ii).StructPos)

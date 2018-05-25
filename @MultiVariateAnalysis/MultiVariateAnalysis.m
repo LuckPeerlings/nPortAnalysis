@@ -11,11 +11,12 @@ classdef MultiVariateAnalysis < handle
         UVOutputList
         BaseInput
         BaseOutput
+        ClassHandleProtected
     end
-  
 
     methods 
         function obj = CalculateUncertainty(obj)
+            %obj = CreateInput;
             obj = GetListInputUncertainVariables(obj);
             obj = GetListOutputUncertainVariables(obj);
             obj = DetermineSensitivity(obj);
@@ -23,6 +24,30 @@ classdef MultiVariateAnalysis < handle
             obj = CreateCorrelationInfo(obj);
             obj = CorrVariance(obj);
             obj = SetOutput(obj);
+        end
+        
+        function obj = CreateInput(obj)
+            %Get the class meta data
+            mco = metaclass(obj.ClassHandle);
+            %Go over the propertylist and find the inputs and add the value and name to the Input property
+            %Go over the propertylist and find the outpus and add these to
+            %the OutputProperties
+            PropertiesList = mco.PropertyList;
+            nn = 1;
+            mm = 1;
+            for ii = 1:length(PropertiesList)
+                if strcmp(PropertiesList(ii).SetAccess,'public')
+                    obj.Input{nn}{1} = PropertiesList(ii).Name;
+                    UV = obj.ClassHandle.(PropertiesList(ii).Name);
+                    obj.Input{nn}{2} = UV;
+                    nn = nn +1;
+                end                
+                if strcmp(PropertiesList(ii).GetAccess,'public') && strcmp(PropertiesList(ii).SetAccess,'protected')
+                    obj.OutputProperties{mm} = PropertiesList(ii).Name;
+                    mm = mm +1;
+                end
+            end
+            obj.ClassHandleProtected = copy(obj.ClassHandle);
         end
         
         function obj = SetOutput(obj)

@@ -1,8 +1,6 @@
 function Output = UpdateSolution(obj,Input)
 %Setting the input parameter for the 
 for ii = 1:length(Input)
-%     Input{ii}{1}
-%     Input{ii}{2}
     set(obj.ClassHandle,Input{ii}{1},Input{ii}{2});
 end
 

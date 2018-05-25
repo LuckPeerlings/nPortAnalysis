@@ -21,7 +21,8 @@ Index = 1;
 for nn = 1:length(obj.UVInputList)     
     UV = obj.UVInputList(nn).UV; %The uncertain variable
     ii = obj.UVInputList(nn).Pos; %The index of the inputvector where the uncertain variabel is located
-    for jj = 1:size(UV.Value,1)     
+    for jj = 1:size(UV.Value,1)   
+        
         PerturbedInput = obj.BaseInput;
         %Calculating the sensitivity of the output parameters do
         %perturbations in the real part
@@ -84,9 +85,10 @@ for nn = 1:length(obj.UVOutputList)
     %Determine if the perturbation was real or complex and calculate
     %the appropriate elements of the sensitivity matrix. Saved in
     %columnwise vector
-    
+
     if isreal(Perturbation)
         Sensitivity = (POSingle-BOSingle)./Perturbation;
+        
         obj.UVOutputList(nn).UV.Sensitivity(Index,:,1) = real(Sensitivity);
         obj.UVOutputList(nn).UV.Sensitivity(Index,:,2) = imag(Sensitivity);
         obj.UVOutputList(nn).UV.Sensitivity(Index,:,3) = 0;
