@@ -246,8 +246,7 @@ Type
                 nn = nn + 1;
             end
      
-        end
-        
+        end        
         function obj = calculateTotalUncertainty(obj)
             if strcmp(obj.Type,'Input')
                 error('Cannot calculate the covariance matrix for uncertain variables of the input type');                
@@ -260,7 +259,7 @@ Type
             end
         
         end
-        function obj = plotRelativeUncertainty(obj)
+        function obj = plotRelativeUncertainty_Input(obj)
             figure
             for ii = 1:size(obj.UCMatrix,1)
                 AX{ii} = subplot(size(obj.UCMatrix,1),1,ii);
@@ -276,33 +275,374 @@ Type
                     semilogy(AreaEllipse(jj)./abs(obj.Value(ii,:)))
                     grid on
             end
-        end
+        end 
+        function [AX1,AX2] = plotRealImag(obj,XValues,SD) 
+           
+            Value = obj.Value.';
+            if isempty(obj.CorrVar)
+                TotVar = squeeze(sum(obj.Var,1));
+            else
+                TotVar = squeeze(sum(obj.Var,1) + sum(obj.CorrVar,1));
+            end
+            if nargin == 1
+                XValues = [1:length(Value)].';
+                SD = 1.65;
+            end
+            if nargin == 2
+                SD = 1.65;
+            end
+            %Calculate the variance matrix rotated in the direction of
+            %the mean vector value.
+            %Taken from In-Phase/Quadrature Covariance-Matrix
+            %Representation of the Uncertainty of Vectors and Complex
+            %Numbers, Dylan F. Willians, C.m. Wand and Uwe Arz
+            figure;
+            Top = real( Value) + SD*sqrt(TotVar(:,4));
+            Bottom = flipud(real( Value) - SD*sqrt(TotVar(:,4)));
+
+
+            AX1 = subplot(2,1,1);
+            hold all            
+            fill([XValues;flipud(XValues)],[Top;Bottom],[0.8,0.8,0.8],'EdgeColor','none')
+            plot(XValues,real( Value),'b-');
+        
             
-        function obj = plotUncertaintyEllipse(obj,axesHandle)
+            Top = imag( Value) + SD*sqrt(TotVar(:,4));
+            Bottom = flipud(imag( Value) - SD*sqrt(TotVar(:,4)));
+            
+            AX2 = subplot(2,1,2);
+            hold all            
+            fill([XValues;flipud(XValues)],[Top;Bottom],[0.8,0.8,0.8],'EdgeColor','none')
+            plot(XValues,imag( Value),'b-');
+        
+        end
+        
+        function obj = plotRelativeUncertainty_Output(obj)
+            figure
+            for ii = 1:size(obj.Var,1)
+                AX{ii} = subplot(size(obj.Var,1),1,ii);
+                set(AX{ii},'xtick',[])
+                set(AX{ii},'xticklabel',[])
+                for jj = 1:size(obj.Var,2)
+                    CovarianceMatrix = reshape(squeeze(obj.Var(ii,jj,:)),2,2);
+                    [~,D] = eig(CovarianceMatrix,'vector');
+                    AreaEllipse(jj) = sqrt(D(1)*D(2));
+                end
+                %set(gca,'xtick',[])
+                %set(gca,'xticklabel',[])
+                    semilogy(AreaEllipse(jj)./abs(obj.Value(ii,:)))
+                    grid on
+            end
+        end 
+        function obj = plotUncertaintyEllipse(obj,axesHandle,SD,Color)
             if isreal(obj.Value)
                 error('UncertaintyEllipse can not be plotted for real numbers')
             end
+            if nargin == 3
+                Color = [0.6,0.6,0.6];
+            end
             if nargin == 1
                 axeshandle = gca;
+                SD = 2;
+                Color = [0,0,0];
             end
             for ii=1:size(obj.Value,2)
             H = fnc_plot_gaussian_ellipsoid(   [real(obj.Value(:,ii)),imag(obj.Value(:,ii))],...
-                                            reshape(obj.UCMatrix(ii,:),[2,2]),2,100,axesHandle);
-                                        set(H,'color',[0.6,0.6,0.6]);
+                                            reshape(obj.UCMatrix(ii,:),[2,2]),SD,100,axesHandle);
+                                        set(H,'color',Color);
             end
         %  plots the distribution specified by 
         %  mean M and covariance C. The distribution is plotted as an ellipse (in 
         %  2-d) or an ellipsoid (in 3-d).  By default, the distributions are 
         %  plotted in the current axes. H is the graphics handle to the plotted 
         %  ellipse or ellipsoid.
-        end
-        
+        end        
         function removeCorrelation(Position)
         end
-            
+        
+        %Overloaded operators
+        %The operators are overloaded such that it functions exactly like a
+        %double.
+        %The list is not exhaustive and operators have to be added
+        %depending on the need of the current classes.
+        function r = sqrt(obj1)
+            [a,~] = CheckOverload(obj1,[]);
+            r = UncertainVariable;
+            r.Value = builtin('sqrt',a);                     
+        end
+        function r = exp(obj1)
+            r = UncertainVariable;
+            r.Value = builtin('exp',obj1.Value);                     
+        end
+        function r = tan(obj1)
+            [a,~] = CheckOverload(obj1,[]);
+            r = UncertainVariable;
+            r.Value = builtin('tan',a);          
+        end
+        function r = real(obj1)
+            [a,~] = CheckOverload(obj1,[]);
+            r = UncertainVariable;
+            r.Value = builtin('real',a);          
+        end
+        function r = imag(obj1)
+            [a,~] = CheckOverload(obj1,[]);
+            r = UncertainVariable;
+            r.Value = builtin('imag',a);          
+        end
+        function plot(varargin)
+                     
+            if nargin == 1
+                [a] = CheckOverload(varargin{1},[]);
+                plot(a);
+            elseif nargin == 2
+                if isa(varargin{1},'Axes')
+                    [a] = CheckOverload(varargin{2},[]);
+                    plot(varargin{1},a);
+                else
+                    [a,b] = CheckOverload(varargin{1},varargin{2});
+                    plot(a,b);
+                end
+            elseif nargin == 3
+                if isa(varargin{1},'Axes')
+                    [a,b] = CheckOverload(varargin{2},varargin{3});
+                    plot(varargin{1},a,b);
+                else
+                    [a,b] = CheckOverload(varargin{1},varargin{2});
+                    plot(a,b,varargin{3});
+                end
+            elseif nargin > 4
+                if isa(varargin{1},'Axes')
+                    [a,b] = CheckOverload(varargin{2},varargin{3});
+                    plot(varargin{1},a,b,varargin{4:end});
+                else
+                    [a,b] = CheckOverload(varargin{1},varargin{2});
+                    plot(a,b,varargin{3},varargin{4:end});
+                end     
+            end
+        end
+        function r = isrow(obj1)            
+            r = builtin('isrow',obj1.Value);          
+        end
+        function r = max(obj1)
+            r = UncertainVariable;
+            r.Value =  builtin('max',obj1.Value);          
+        end
+        function r = abs(obj1)
+            r = UncertainVariable;
+            r.Value = builtin('abs',obj1.Value);          
+        end
+        function r = double(obj1)
+            r = builtin('double',obj1.Value);          
+        end
+        function r = length(obj1)
+            r = builtin('length',obj1.Value);          
+        end
+        function r = size(obj1,varargin)            
+            r = builtin('size',obj1.Value,varargin{:});          
+        end
+        function r = plus(obj1,obj2)
+            [a,b] = CheckOverload(obj1,obj2);
+            r = UncertainVariable;
+            r.Value = a + b;                     
+        end        
+        function r = minus(obj1,obj2)
+            [a,b] = CheckOverload(obj1,obj2);
+            r = UncertainVariable;
+            r.Value = a - b;                     
+        end        
+        function r = uminus(obj1)
+            [a,~] = CheckOverload(obj1,[]);
+            r.Value = -a;                     
+        end    
+        function r = uplus(obj1)
+            [a,~] = CheckOverload(obj1,[]);
+            r = UncertainVariable;
+            r.Value = +a;                     
+        end 
+        
+        function r = times(obj1,obj2)
+            [a,b] = CheckOverload(obj1,obj2);
+            r = UncertainVariable;
+            r.Value = a .* b;                     
+        end
+        function r = mtimes(obj1,obj2)
+            [a,b] = CheckOverload(obj1,obj2);
+            r = UncertainVariable;
+            r.Value = a * b;                     
+        end        
+        function r = rdivide(obj1,obj2)
+            [a,b] = CheckOverload(obj1,obj2);
+            r = UncertainVariable;
+            r.Value = a./b;                     
+        end        
+        function r = ldivide(obj1,obj2)
+            [a,b] = CheckOverload(obj1,obj2);
+            r = UncertainVariable;
+            r.Value = a.\b;                     
+        end        
+        function r = mrdivide(obj1,obj2)
+            [a,b] = CheckOverload(obj1,obj2);
+            r = UncertainVariable;
+            r.Value = a/b;                     
+        end
+        function r = mldivide(obj1,obj2)
+            [a,b] = CheckOverload(obj1,obj2);
+            r = UncertainVariable;
+            r.Value = a\b;                     
+        end
+        function r = power(obj1,obj2)
+            [a,b] = CheckOverload(obj1,obj2);
+            r = UncertainVariable;
+            r.Value = a.^b;                     
+        end
+        function r = mpower(obj1,obj2)
+            [a,b] = CheckOverload(obj1,obj2);
+            r = UncertainVariable;
+            r.Value = a^b;                     
+        end
+        function r = lt(obj1,obj2)
+            [a,b] = CheckOverload(obj1,obj2);
+            r = UncertainVariable;
+            r.Value = a<b;                     
+        end
+        function r = gt(obj1,obj2)
+            [a,b] = CheckOverload(obj1,obj2);
+            r = UncertainVariable;
+            r.Value = a>b;                     
+        end
+        function r = le(obj1,obj2)
+            [a,b] = CheckOverload(obj1,obj2);
+            r = UncertainVariable;
+            r.Value = a<=b;                     
+        end
+        function r = ge(obj1,obj2)
+            [a,b] = CheckOverload(obj1,obj2);
+            r = UncertainVariable;
+            r.Value = a>=b;                     
+        end
+        function r = ne(obj1,obj2)
+            [a,b] = CheckOverload(obj1,obj2);
+            r = UncertainVariable;
+            r.Value = a~=b;                     
+        end
+        function r = eq(obj1,obj2)
+            [a,b] = CheckOverload(obj1,obj2);
+            r = UncertainVariable;
+            r.Value = a==b;                     
+        end
+        function r = and(obj1,obj2)
+            [a,b] = CheckOverload(obj1,obj2);
+            r = UncertainVariable;
+            r.Value = a & b;                     
+        end
+        function r = or(obj1,obj2)
+            [a,b] = CheckOverload(obj1,obj2);
+            r = UncertainVariable;
+            r.Value = a|b;                     
+        end
+        function r = not(obj1)
+            [a,~] = CheckOverload(obj1,[]);
+            r = UncertainVariable;
+            r.Value = ~a;                     
+        end
+        function r = colon(obj1,d,obj2)
+            [a,b] = CheckOverload(obj1,obj2);
+            r = UncertainVariable;
+            r.Value = a:d:b;                     
+        end
+        function r = ctranspose(obj1)
+            [a,~] = CheckOverload(obj1,[]);
+            r = UncertainVariable;
+            r.Value = a';                     
+        end        
+        function r = transpose(obj1)
+            [a,~] = CheckOverload(obj1,[]);
+            r = UncertainVariable;
+            r.Value = a.';                     
+        end        
+        function r = horzcat(obj1,obj2)
+            [a,b] = CheckOverload(obj1,obj2);
+            r = UncertainVariable;
+            r.Value = [a b];                     
+        end
+        function r = vertcat(obj1,obj2)
+            [a,b] = CheckOverload(obj1,obj2);
+            r = UncertainVariable;
+            r.Value = [a;b];                     
+        end       
+        function varargout = subsref(obj,s)
+
+            switch s(1).type
+                case '.'
+                    [varargout{1:nargout}] = builtin('subsref',obj,s);
+                case '()'
+                    if length(s) == 1
+                        % Implement obj(indices)
+                        r = UncertainVariable;                      
+                        r.Value = builtin('subsref',obj.Value,s);
+                        [varargout{1}] = r;
+                    else
+                        % Use built-in for any other expression
+                        [varargout{1:nargout}] = builtin('subsref',obj,s);
+                    end
+                case '{}'
+                    [varargout{1:nargout}] = builtin('subsref',obj,s);
+                    
+                otherwise
+                    error('Not a valid indexing expression')
+            end
+        end
+        function r = subsasgn(A,s,varargin)
+
+            switch s(1).type
+                case '.'
+                    r = builtin('subsasgn',A,s,varargin{:});   
+                case '()'
+                    if ~isa(A,'UncertainVariable')
+                        r = UncertainVariable;
+                        r.Value = A;
+                    else
+                        r = A;
+                    end
+                    for ii = 1:length(varargin)
+                        if isa(varargin{ii},'UncertainVariable')
+                            varargin_New{ii} = varargin{ii}.Value;
+                        else
+                            varargin_New{ii} = varargin{ii};
+                        end
+                    end
+                    r.Value = builtin('subsasgn',r.Value,s,varargin_New{:});                    
+                case '{}'                    
+                    r = builtin('subsasgn',A,s,varargin);
+                otherwise
+                    error('Not a valid indexing expression')
+            end
+        end        
+        function r = subsindex(obj,s)
+
+            r = UncertainVariable;
+            r.Value = builtin('subsindex',A.Value,s);
+        end        
     end
 end
+     
 
+function [a,b] = CheckOverload(obj1,obj2)
+    if isa(obj1,'UncertainVariable') 
+        a = obj1.Value;
+    else
+        a = obj1;
+    end
+    if isempty(obj2)
+        b = [];        
+    else       
+        if isa(obj2,'UncertainVariable') 
+            b = obj2.Value;
+        else
+            b = obj2;
+        end
+    end
+end
 function [UCMatrix,CorrMatrix] = GetCorrUCMatrix(CovarMatrix)
      
     UCMatrix = [sqrt(CovarMatrix(1,1)), 0 , 0, sqrt(CovarMatrix(2,2))];
