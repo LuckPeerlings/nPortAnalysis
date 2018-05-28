@@ -70,7 +70,7 @@ classdef PronyImpedance < PronyMethod
         
         function obj = PlotImpedance(obj)
             figure
-            set(gcf,'Position',[678 732 987 366]);
+            set(gcf,'Position',[100 100 987 366]);
             AX = subplot(1,2,1);
             hold on;
             PronyMethod.ArrowPlotComplexDomain(AX,obj.WaveNumberZ);
