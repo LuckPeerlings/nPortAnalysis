@@ -25,7 +25,7 @@ end
 Epsilon = 25e-3;
 X = 0:0.055:9*0.055;
 
-Mic_Positions = X.';
+MicPositions = X.';
 MicEqPositions = X.';  
 P = MeasData.Z(4:end-3, SortedFrequencyIndex );
 if strcmp(WaveDirection,'Upstream')
@@ -37,7 +37,8 @@ else
 end
 Temperature = Measurement.t;
 Height = 0.025;
-Prony = Measurement.f.';
+Prony = PronyImpedance( Measurement.f.',P,MicPositions,MicEqPositions,5,Epsilon,...
+                        FlowVelocity, Temperature, Height);
 
 
 Prony.CalculateImpedance;
