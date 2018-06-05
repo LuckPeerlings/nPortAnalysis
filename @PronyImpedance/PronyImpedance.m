@@ -73,7 +73,7 @@ classdef PronyImpedance < PronyMethod
             set(gcf,'Position',[100 100 987 366]);
             AX = subplot(1,2,1);
             hold on;
-            PronyMethod.ArrowPlotComplexDomain(AX,obj.WaveNumberZ);
+            PronyMethod.PlotComplexDomain(AX,obj.WaveNumberZ);
             axis square;
             grid on
             ylabel('Imag. part of wavenumber')  

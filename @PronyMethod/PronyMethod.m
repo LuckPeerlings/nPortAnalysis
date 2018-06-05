@@ -93,7 +93,7 @@ classdef PronyMethod < matlab.mixin.Copyable & matlab.mixin.SetGet
                             
         end
         
-        function obj = PlotWaveNumberComplexDomain(obj,ModeNr)
+        function obj = PlotWaveNumberComplexDomain(obj,ModeNr,PlotMode)
             %Method to plot the wavenumbers in the complex domain. If the
             %method is called without an argument, the unwrapped wavenumber
             %is plotted.
@@ -109,7 +109,11 @@ classdef PronyMethod < matlab.mixin.Copyable & matlab.mixin.SetGet
             figure;
             AX  = axes();
             hold on;
+            if nargin > 2 && strcmp(PlotMode,'Arrow')
             PronyMethod.ArrowPlotComplexDomain(AX,WaveNumberPlot)
+            else
+            PronyMethod.PlotComplexDomain(AX,WaveNumberPlot)
+            end
             axis square;
             
             ylabel('Imag. part of wavenumber')  
@@ -757,6 +761,15 @@ classdef PronyMethod < matlab.mixin.Copyable & matlab.mixin.SetGet
                 end                
             end
             plot(real(Data(ii+1)),imag(Data(ii+1)),'rx');
+        end
+        
+        function [AX] = PlotComplexDomain(AX,Data)
+            %Plot a line plot, in the complex domain, with the start and
+            %end position indicated by a 
+            plot(real(Data(1)),imag(Data(1)),'ro');
+            plot(AX,real(Data),imag(Data),'.-')
+            plot(real(Data(end)),imag(Data(end)),'rx');
+            legend(AX,'Start Frequency','Wavenumber','End Frequency')
         end
         
         function [H] = Hankel(M, N, s, P)
