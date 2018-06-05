@@ -1,12 +1,12 @@
 
-addpath('..\')
-addpath('..\Tools')
-addpath('..\Methods')
+addpath('..\..\')
+addpath('..\..\Tools')
+addpath('..\..\Methods')
 
 % close all
 clear all
 
-DATADIR = '.\ProcessedData\LinerC_Sample3_NoFlow_10Pa_Inserts_WideFrequency\';
+DATADIR = '.\ProcessedData\LinerB_Sample1_Mach0008_20Pa_Covar\';
 
 
 WaveDirection = 'Upstream';
@@ -23,7 +23,7 @@ elseif  strcmp(WaveDirection,'Downstream')
 else
     error('WaveDirection incorrectly defined')
 end
-Epsilon = 25e-3;
+Epsilon = 15e-2;
 X = 0:0.055:9*0.055;
 
 Mic_Position = X.';
@@ -37,7 +37,7 @@ MicPositions = UncertainVariable(  Mic_Position,...
                             );
 MicEqPositions = X.';  
 
- Measured_Pressure = MeasData.Z(4:end-3, SortedFrequencyIndex );
+Measured_Pressure = MeasData.Z(4:end-3, SortedFrequencyIndex );
 Covariance_Pressure = MeasData.CoVar_NoCorr(4:end-3,SortedFrequencyIndex ,:);
 DOF_Pressure = zeros(size(Measured_Pressure,1),1);
 P = UncertainVariable(  Measured_Pressure,...
@@ -46,8 +46,7 @@ P = UncertainVariable(  Measured_Pressure,...
                         [],...
                         'P'...
                         );
-% P = Measured_Pressure;
-% P = Measured_Pressure;
+
 if strcmp(WaveDirection,'Upstream')
     FlowVelocity = UncertainVariable(Measurement.U*Measurement.WaveCal.Velocity_Corr.Port1,(2)^2, 0,[],'FlowVelocity');
 elseif  strcmp(WaveDirection,'Downstream')
@@ -67,17 +66,21 @@ Prony = PronyImpedance( Measurement.f.',P,MicPositions,MicEqPositions,5,Epsilon,
 Prony.CalculateImpedance;
 Prony.PlotImpedance;
 
-% Z = MultiVariateAnalysis;
-% Z.ClassHandle = PronyImpedance( Measurement.f.',P,MicPositions,MicEqPositions,5,Epsilon,...
-%                         FlowVelocity, Temperature, Height);
-% Z.MethodHandles{1} = 'CalculateImpedance';
-% Z.CreateInput();
-% Z.CalculateUncertainty();
-% Q = Z.Output.Impedance;
-% 
-% [AX1,AX2] = Q.plotRealImag(Measurement.f,2);
-% 
-% xlabel(AX2,'frequency')
+Z = MultiVariateAnalysis;
+Z.ClassHandle = PronyImpedance( Measurement.f.',P,MicPositions,MicEqPositions,5,Epsilon,...
+                        FlowVelocity, Temperature, Height);
+Z.MethodHandles{1} = 'CalculateImpedance';
+Z.CreateInput();
+Z.CalculateUncertainty();
+Q = Z.Output.Impedance;
+
+[AX1,AX2] = Q.plotRealImag(Measurement.f,2);
+
+ylabel(AX1,'\Re  [ Z/\rho c ]')
+ylabel(AX2,'\Im [ Z/\rho c]')
+
+xlabel(AX1,'Frequency')
+xlabel(AX2,'Frequency')
 
 % figure; area(Q.Var(:,:,1).')
 % Francois = load('C:\Users\Luck Peerlings\Documents\KTH\Experimental\MeasurementData\2018-03_LinerMeasurements_Pierre\Main folder\Impedance\Results\14-Mar-2018_LinerB_Sample1_M008_10Pa.mat');

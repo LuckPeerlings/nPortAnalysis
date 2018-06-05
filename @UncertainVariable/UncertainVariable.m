@@ -301,7 +301,7 @@ Type
             Bottom = flipud(real( Value) - SD*sqrt(TotVar(:,4)));
 
 
-            AX1 = subplot(2,1,1);
+            AX1 = subplot(1,2,1);
             hold all            
             fill([XValues;flipud(XValues)],[Top;Bottom],[0.8,0.8,0.8],'EdgeColor','none')
             plot(XValues,real( Value),'b-');
@@ -310,7 +310,7 @@ Type
             Top = imag( Value) + SD*sqrt(TotVar(:,4));
             Bottom = flipud(imag( Value) - SD*sqrt(TotVar(:,4)));
             
-            AX2 = subplot(2,1,2);
+            AX2 = subplot(1,2,2);
             hold all            
             fill([XValues;flipud(XValues)],[Top;Bottom],[0.8,0.8,0.8],'EdgeColor','none')
             plot(XValues,imag( Value),'b-');
