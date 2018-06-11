@@ -276,6 +276,52 @@ Type
                     grid on
             end
         end 
+        function obj = plotGroupContributionRealImag(obj,XValues)
+            if nargin == 1
+                XValues = [1:size(obj.Value,2)].';
+            end
+            GroupNames = obj.Group;
+                     
+            nn = 1;
+            while ~isempty(GroupNames)
+                GroupNameUnique(nn) = GroupNames{1};
+                GroupNames(1) = [];
+                
+                %Remove all group names that are the same
+                mm = 1;
+                GroupNames_ToDelete = [];
+                for jj = 1:length(GroupNames)
+                    if strcmp(GroupNames{jj},GroupNameUnique{nn})
+                        GroupNames_ToDelete(mm) = jj;
+                        mm = mm +1;
+                    end
+                end
+                
+                GroupNames(GroupNames_ToDelete) = [];
+                nn = nn + 1;
+                %See which variances belong to the specific groupnames
+            end
+           
+            CoVar_Group = zeros(length(GroupNameUnique),size(obj.Value,2),4);
+             for nn = 1:length(GroupNameUnique)
+                for jj = 1:length(obj.Group)
+                    if strcmp(obj.Group{jj},GroupNameUnique{nn})
+                        Covar_Group(nn,:,:) = CoVar_Group(nn,:,:) + obj.Var(jj,:,:);                        
+                    end
+                    
+                end
+             end
+             figure;
+             subplot(1,2,1)
+             area(XValues, squeeze(Covar_Group(:,:,1).'))
+             legend( GroupNameUnique{:})                      
+             title('Variance distribution Real Value')
+             
+             subplot(1,2,2)
+             area(XValues, squeeze(Covar_Group(:,:,4).'))
+             legend( GroupNameUnique{:})               
+             title('Variance distribution Imaginary Value')
+        end
         function [AX1,AX2] = plotRealImag(obj,XValues,SD) 
            
             Value = obj.Value.';

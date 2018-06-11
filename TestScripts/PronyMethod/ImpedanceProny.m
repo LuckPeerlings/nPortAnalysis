@@ -1,7 +1,7 @@
 
-addpath('.\..\')
-addpath('.\..\Tools')
-addpath('.\..\Methods')
+addpath('.\..\..\')
+addpath('.\..\..\Tools')
+addpath('.\..\..\Methods')
 
 % close all
 clear all
@@ -24,14 +24,22 @@ for dd = 1:length(DATADIRS)
         else
             error('WaveDirection incorrectly defined')
         end
-        Epsilon = 25e-3;
+        
+        Z_cal  = load('.\Calibration\Cal_2018_04_10.mat');
+        for ii=1:size(Z_cal.C,2)    
+            C_fitted(ii,:) = interp1(Z_cal.f_cal, real(Z_cal.C(:,ii)),MeasData.Ref_Freq,'linear','extrap') + 1i*interp1(Z_cal.f_cal, imag(Z_cal.C(:,ii)),MeasData.Ref_Freq,'linear','extrap');
+        end        
+        MeasData.Z = MeasData.Z./C_fitted; 
+        Epsilon = 65e-2;
         X = 0:0.055:9*0.055;
 
         MicPositions = X.';
         MicEqPositions = X.';  
         P = MeasData.Z(4:end-3, SortedFrequencyIndex );
+        %Calibrate the pressures
+        
         if strcmp(WaveDirection,'Upstream')
-            FlowVelocity = Measurement.U*Measurement.WaveCal.Velocity_Corr.Port1;
+            FlowVelocity = Measurement.U*Measurement.WaveCal.Velocity_Corr.Port2;
         elseif  strcmp(WaveDirection,'Downstream')
             FlowVelocity = Measurement.U*Measurement.WaveCal.Velocity_Corr.Port2;
         else
@@ -45,6 +53,7 @@ for dd = 1:length(DATADIRS)
 
         Prony.CalculateImpedance;
         Prony.PlotImpedance;
+        save([DATADIR,WaveDirection,'.mat'],'Prony');
         savefig([DATADIR,WaveDirection,'.fig'])
     end
 end

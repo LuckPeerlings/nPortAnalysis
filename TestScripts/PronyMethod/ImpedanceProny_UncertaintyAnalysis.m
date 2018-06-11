@@ -23,17 +23,24 @@ elseif  strcmp(WaveDirection,'Downstream')
 else
     error('WaveDirection incorrectly defined')
 end
+
+Z_cal  = load('.\Calibration\Cal_2018_04_10.mat');
+for ii=1:size(Z_cal.C,2)    
+    C_fitted(ii,:) = interp1(Z_cal.f_cal, real(Z_cal.C(:,ii)),MeasData.Ref_Freq,'linear','extrap') + 1i*interp1(Z_cal.f_cal, imag(Z_cal.C(:,ii)),MeasData.Ref_Freq,'linear','extrap');
+end        
+MeasData.Z = MeasData.Z./C_fitted; 
+
 Epsilon = 15e-2;
 X = 0:0.055:9*0.055;
 
 Mic_Position = X.';
-Variance_MicPosition = 1*(5e-3)^2*ones(size(X)).';
+Variance_MicPosition = 1*(1e-3)^2*ones(size(X)).';
 DOF_MicPosition = zeros(size(X.'));
 MicPositions = UncertainVariable(  Mic_Position,...
                             Variance_MicPosition,...
                             DOF_MicPosition,...
                             [],...
-                            'x'...
+                            'Microphone Position'...
                             );
 MicEqPositions = X.';  
 
@@ -44,7 +51,7 @@ P = UncertainVariable(  Measured_Pressure,...
                         Covariance_Pressure,...
                         DOF_Pressure,...
                         [],...
-                        'P'...
+                        'Acoustic Pressure'...
                         );
 
 if strcmp(WaveDirection,'Upstream')
@@ -57,7 +64,7 @@ end
 
 FlowVelocity = UncertainVariable(-Measurement.U*Measurement.WaveCal.Velocity_Corr.Port1,(Measurement.U*0.10)^2, 0,[],'FlowVelocity');
 Temperature = UncertainVariable(Measurement.t,(1)^2, 0,[],'Temperature');
-Height = UncertainVariable(0.025,(1e-3)^2, 0,[],'DuctHeight');
+Height = UncertainVariable(0.025,(5e-4)^2, 0,[],'DuctHeight');
 Prony = PronyImpedance( Measurement.f.',P,MicPositions,MicEqPositions,5,Epsilon,...
                         FlowVelocity, Temperature, Height);
                     
