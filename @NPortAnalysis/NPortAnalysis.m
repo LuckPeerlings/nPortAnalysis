@@ -258,7 +258,7 @@ classdef NPortAnalysis  < matlab.mixin.SetGet
                     NrMeas(ii) = NrMeas(ii)-1;
                 end
             end
-            figure
+            figure('Name','Amplitude')
             for ii = 1:obj.NrPorts
                 for jj = 1:obj.NrMeas
                     if isfield(obj.Input.(['Port',num2str(ii)]),'Constant')
@@ -271,7 +271,25 @@ classdef NPortAnalysis  < matlab.mixin.SetGet
                     subplot(obj.NrPorts,obj.NrMeas, (jj-1)*obj.NrMeas+ii);
                     plot( InputDecomp.f,abs(P.Plus),'r');
                     hold all
-                    plot( InputDecomp.f,abs(P.Min),'y');                                        
+                    plot( InputDecomp.f,abs(P.Min),'b');                                        
+                end
+            end
+            
+            figure('Name','Phase')
+            
+            for ii = 1:obj.NrPorts
+                for jj = 1:obj.NrMeas
+                    if isfield(obj.Input.(['Port',num2str(ii)]),'Constant')
+                        InputDecomp = MergeStructs( obj.Input.(['Port',num2str(ii)]).(['Meas',num2str(jj)]), obj.Input.(['Port',num2str(ii)]).('Constant') );
+                    else
+                        InputDecomp = obj.Input.(['Port',num2str(ii)]).(['Meas',num2str(jj)]);
+                    end
+                    InputDecomp.f = obj.FreqVec;
+                    [P,Correction] = NPortAnalysis.WaveDecomposition(InputDecomp);
+                    subplot(obj.NrPorts,obj.NrMeas, (jj-1)*obj.NrMeas+ii);
+                    plot( InputDecomp.f,angle(P.Plus),'r');
+                    hold all
+                    plot( InputDecomp.f,angle(P.Min),'b');                                        
                 end
             end
             % Save each field of the scattering matrix in the ScatNPort.
@@ -296,15 +314,14 @@ classdef NPortAnalysis  < matlab.mixin.SetGet
                 error('The input has not been checked')
             end
             
-            figure;
-            
+            figure('Name','Amplitude')            
             for ii = 1:obj.NrPorts
                 for jj = 1:obj.NrPorts
                     subplot(obj.NrPorts,obj.NrPorts, (ii - 1)*obj.NrPorts + jj )
                     plot(obj.FreqVec, abs( obj.ScatNPort.(['S',num2str(ii),num2str(jj)]) ))
                 end
             end
-            figure;
+            figure('Name','Phase')
             for ii = 1:obj.NrPorts
                 for jj = 1:obj.NrPorts
                     subplot(obj.NrPorts,obj.NrPorts, (ii - 1)*obj.NrPorts + jj )
