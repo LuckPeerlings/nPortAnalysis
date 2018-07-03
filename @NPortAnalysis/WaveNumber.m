@@ -42,8 +42,8 @@ DEFAULT.f = [];                 %Default frequency
 DEFAULT.U =  0;                 %Default air-speed
 DEFAULT.PitotPressure = [];
 DEFAULT.PitotSpeedCorrection = [];
-DEFAULT.GasProp = [];           %Default gas Properties
-DEFAULT.Model.Name = [];  %Default loss model.
+DEFAULT.GasProp.Name = 'Air';           %Default gas Properties
+DEFAULT.Model.Name = 'NoLoss';  %Default loss model.
 DEFAULT.GetOutput = false;      %Default valie of the GetOutput flag
 
 % The available arguments and their check function
@@ -61,7 +61,7 @@ parse(pars,varargin{:});
 
 %Assigning the parsed arguments to their variables
 Model = pars.Results.Model;
-Prop = AirProperties(pars.Results.GasProp);
+Prop = GasProperties(pars.Results.GasProp);
 PitotPressure = pars.Results.PitotPressure;
 PitotSpeedCorrection = pars.Results.PitotSpeedCorrection;
 U = pars.Results.U;
