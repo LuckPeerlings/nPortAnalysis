@@ -79,7 +79,8 @@ DEFAULT.CoVar = [];
 DEFAULT.CompCoVar = [];
 DEFAULT.f = [];        %Default frequency
 DEFAULT.x = [];
-DEFAULT.GasProp = [];   %Default Gas Properties
+DEFAULT.GasProp.t = 20;   %Default Gas Properties
+DEFAULT.GasProp.GasName = 'Air';
 DEFAULT.WaveNumberProp =  [];
 DEFAULT.Method = 'Standard';
 DEFAULT.OptimMethod = 'None'; % The optimization method that has to be used.
@@ -233,6 +234,7 @@ function res = ObjectiveFunction_Temperature(x,Data,SelecVec,display)
         res = res(SelecVec);
     end
 end
+
 function res = ObjectiveFunction_Flow(x,Data,SelecVec,display)
     %The wavenumber will optimized by adding
     Data.WaveNumberProp.U = Data.WaveNumberProp.U + x(1) ;
@@ -246,6 +248,7 @@ function res = ObjectiveFunction_Flow(x,Data,SelecVec,display)
         res = res(SelecVec);
     end
 end
+
 function res = ObjectiveFunction_TemperatureFlow(x,Data,SelecVec,display)
     %The wavenumber will optimized by adding
     Data.GasProp.t = Data.GasProp.t + x(1);    
