@@ -26,6 +26,7 @@ for dd = 1:length(DATADIRS)
         end
         
         Z_cal  = load('.\Calibration\Cal_2018_04_10.mat');
+        C_fitted = zeros(size(Z_cal.C,2),length(MeasData.Ref_Freq));
         for ii=1:size(Z_cal.C,2)    
             C_fitted(ii,:) = interp1(Z_cal.f_cal, real(Z_cal.C(:,ii)),MeasData.Ref_Freq,'linear','extrap') + 1i*interp1(Z_cal.f_cal, imag(Z_cal.C(:,ii)),MeasData.Ref_Freq,'linear','extrap');
         end        
@@ -53,7 +54,12 @@ for dd = 1:length(DATADIRS)
 
         Prony.CalculateImpedance;
         Prony.PlotImpedance;
+        %Stop executing and see if the data is correct, use dbcont to save
+        %the data and go to the next datafile
+        keyboard
         save([DATADIR,WaveDirection,'.mat'],'Prony');
         savefig([DATADIR,WaveDirection,'.fig'])
+        Descriptor = fliplr(strtok(fliplr(DATADIR),'\'));
+        Prony.ExportToExcel([DATADIR,WaveDirection,'.xls'],['Directory: ',Descriptor,' WaveDirection: ',WaveDirection]) 
     end
 end
