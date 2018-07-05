@@ -2,6 +2,7 @@
 addpath('..\..\')
 addpath('..\..\Tools')
 addpath('..\..\Methods')
+addpath('.\Functions')
 
 % close all
 clear all
@@ -89,6 +90,9 @@ ylabel(AX2,'\Im [ Z/\rho c]')
 xlabel(AX1,'Frequency')
 xlabel(AX2,'Frequency')
 
+Z.ClassHandle.ExportToExcel('test.xls','aba')
+
+ExportUncertaintyAnalysis( 'test.xls','a', Z.ClassHandle, Q, 1 )
 % figure; area(Q.Var(:,:,1).')
 % Francois = load('C:\Users\Luck Peerlings\Documents\KTH\Experimental\MeasurementData\2018-03_LinerMeasurements_Pierre\Main folder\Impedance\Results\14-Mar-2018_LinerB_Sample1_M008_10Pa.mat');
 % figure; plot(real(Francois.Input.kxProny),imag(Francois.Input.kxProny))

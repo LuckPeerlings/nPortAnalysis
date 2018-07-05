@@ -94,8 +94,12 @@ classdef PronyImpedance < PronyMethod
         
         function obj = ExportToExcel(obj,FileName,Comments)
             %Save Information  on the measurement 
-            A = {'Comments: ',Comments ;...
-                 '','';...
+            A{1,1} = 'Comments: ';
+            for ii = 1:length(Comments)
+                A{ii,2} = Comments{ii};
+            end
+            
+            B = {'','';...
                  'Measurement Conditions','';...                 
                  'Mean Flow Velocity [m/s] ', abs(obj.FlowVelocity);...
                  'Speed of Sound [m/s]', obj.SpeedOfSound;...
@@ -107,6 +111,12 @@ classdef PronyImpedance < PronyMethod
                  'Boundary Condition', 'Ingard-Myers';...
                  '','';...
                  };
+                      
+            for ii = 1:size(B,1)
+                    A{ii+length(Comments),1} = B{ii,1};
+                    A{ii+length(Comments),2} = B{ii,2};
+                
+            end
             for ii = 1:size(A,1)
                 for jj = 3:5 
                     A{ii,jj} = ''; 
@@ -124,36 +134,12 @@ classdef PronyImpedance < PronyMethod
             xlswrite(FileName,A)
         end
         
-        function obj = ExportToExcel(obj,FileName,Comments)
-            %Save Information  on the measurement 
-            A = {'Comments: ',Comments ;...
-                 '','';...
-                 'Measurement Conditions','';...                 
-                 'Mean Flow Velocity [m/s] ', abs(obj.FlowVelocity);...
-                 'Speed of Sound [m/s]', obj.SpeedOfSound;...
-                 'Density [kg/m^3]', obj.Density;...
-                 '','';...
-                 'Algorithm Details','';...
-                 'Method ', obj.Method;...
-                 'Epsilon', obj.Epsilon;...
-                 'Boundary Condition', 'Ingard-Myers';...
-                 '','';...
-                 };
-            for ii = 1:size(A,1)
-                for jj = 3:5 
-                    A{ii,jj} = ''; 
-                end
-            end
-            A(end + 1,:) = {'Frequency [Hz]', 'Real Part Wavenumber [m^-1]', 'Imaginary Part Wavenumber [m^-1]', 'Real Part Normalized Impedance [-]', 'Imaginary Part Normalized Impedance [-]'};
-            N = size(A,1);
-            for ii = 1:length(obj.Frequency)
-                A{ii+N,1} = obj.Frequency(ii);
-                A{ii+N,2} = real(obj.WaveNumber(ii));
-                A{ii+N,3} = imag(obj.WaveNumber(ii));
-                A{ii+N,4} = real(obj.Impedance(ii));
-                A{ii+N,5} = imag(obj.Impedance(ii));
-            end
-            xlswrite(FileName,A)
+        function obj = ExportToPGF(obj,FileName,Comments)
+            Header = {'Frequency [Hz]', 'Real Part Wavenumber [m^-1]', 'Imaginary Part Wavenumber [m^-1]', 'Real Part Normalized Impedance [-]', 'Imaginary Part Normalized Impedance [-]'};
+            Data =  [obj.Frequency; real(obj.WaveNumber); imag(obj.WaveNumber); real(obj.Impedance); imag(obj.Impedance)];
+            size(Data)
+            size(Header)
+            WriteToTextFile_PGF(FileName, Header, Data.', Comments)
         end
     end
     

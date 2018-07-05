@@ -1,4 +1,4 @@
-function [ output_args ] = WriteToTextFile_PGF(DataFile,Headers, Data, Comment )
+function [ Success ] = WriteToTextFile_PGF(DataFile,Headers, Data, Comment )
 
  fileID = fopen(DataFile,'w');
  
@@ -28,7 +28,7 @@ for ii = 1:size(Data,1)
     end
 end
 
-fclose(fileID);
+Success = fclose(fileID);
 
 
 end

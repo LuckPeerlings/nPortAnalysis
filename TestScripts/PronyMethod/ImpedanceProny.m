@@ -60,6 +60,6 @@ for dd = 1:length(DATADIRS)
         save([DATADIR,WaveDirection,'.mat'],'Prony');
         savefig([DATADIR,WaveDirection,'.fig'])
         Descriptor = fliplr(strtok(fliplr(DATADIR),'\'));
-        Prony.ExportToExcel([DATADIR,WaveDirection,'.xls'],['Directory: ',Descriptor,' WaveDirection: ',WaveDirection]) 
+        Prony.ExportToExcel([DATADIR,WaveDirection,'.xls'],{['Directory: ',Descriptor,' WaveDirection: ',WaveDirection]}) 
     end
 end
