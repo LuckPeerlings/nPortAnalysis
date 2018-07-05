@@ -37,6 +37,10 @@ classdef PronyMethod < matlab.mixin.Copyable & matlab.mixin.SetGet
         AllAmplitudes  % Matrix of the amplitudes of each mode and for each frequency used, of size (NrModes) * (number of frequencies used) 
     end
     
+    properties 
+        UC_Attributes_PronyMethod
+    end
+    
     methods
         %Empty Constructor 
         %Constructor

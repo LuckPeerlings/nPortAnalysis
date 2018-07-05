@@ -33,6 +33,7 @@ classdef MultiVariateAnalysis < handle
             %Go over the propertylist and find the outpus and add these to
             %the OutputProperties
             PropertiesList = mco.PropertyList;
+            
             nn = 1;
             mm = 1;
             for ii = 1:length(PropertiesList)

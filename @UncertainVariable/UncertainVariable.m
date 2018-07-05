@@ -402,7 +402,7 @@ Type
         %  2-d) or an ellipsoid (in 3-d).  By default, the distributions are 
         %  plotted in the current axes. H is the graphics handle to the plotted 
         %  ellipse or ellipsoid.
-        end        
+        end       
         function removeCorrelation(Position)
         end
         
@@ -504,8 +504,7 @@ Type
             [a,~] = CheckOverload(obj1,[]);
             r = UncertainVariable;
             r.Value = +a;                     
-        end 
-        
+        end         
         function r = times(obj1,obj2)
             [a,b] = CheckOverload(obj1,obj2);
             r = UncertainVariable;
