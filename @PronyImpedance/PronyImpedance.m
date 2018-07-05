@@ -12,15 +12,17 @@ classdef PronyImpedance < PronyMethod
         SpeedOfSound
         MachNumber
         FreeFieldWaveNumber
-        WaveNumberY %Input
+        WaveNumberY 
         WaveNumberX
-        %Input
         WaveNumberZ 
-    end    
+    end
     properties (GetAccess = public, SetAccess = protected)
         Impedance
     end
-    
+    properties
+        UC_Attributes_PronyImpedance = {'FlowVelocity','Input';}
+    end
+            
     methods
         
         function obj = PronyImpedance(  Frequency,P,MicPositions,MicEqPositions,NrModes,Epsilon,...
@@ -30,7 +32,7 @@ classdef PronyImpedance < PronyMethod
             obj.MicPositions = MicPositions;
             obj.MicEqPositions = MicEqPositions;
             obj.NrModes = NrModes;
-            obj.Epsilon = Epsilon; %1-1e-10; % This value of Epsilon is found to function best.
+            obj.Epsilon = Epsilon; 
             if length(uniquetol(diff(MicEqPositions)))>1
                 error('The given equidistant microphone positions are not equidistant')
             end
@@ -49,7 +51,7 @@ classdef PronyImpedance < PronyMethod
            
             obj.CalculateWaveNumbers()
             obj.IngerdMeyersBoundaryCondition()
-%             obj.PlotImpedance();
+%           obj.PlotImpedance();
         end
         
         
@@ -87,6 +89,71 @@ classdef PronyImpedance < PronyMethod
             xlabel('Frequency [Hz]')
             ylabel('Relative Impedance [-]')
             legend('Real part','Imaginary part')
+        end
+        
+        
+        function obj = ExportToExcel(obj,FileName,Comments)
+            %Save Information  on the measurement 
+            A = {'Comments: ',Comments ;...
+                 '','';...
+                 'Measurement Conditions','';...                 
+                 'Mean Flow Velocity [m/s] ', abs(obj.FlowVelocity);...
+                 'Speed of Sound [m/s]', obj.SpeedOfSound;...
+                 'Density [kg/m^3]', obj.Density;...
+                 '','';...
+                 'Algorithm Details','';...
+                 'Method ', obj.Method;...
+                 'Epsilon', obj.Epsilon;...
+                 'Boundary Condition', 'Ingard-Myers';...
+                 '','';...
+                 };
+            for ii = 1:size(A,1)
+                for jj = 3:5 
+                    A{ii,jj} = ''; 
+                end
+            end
+            A(end + 1,:) = {'Frequency [Hz]', 'Real Part Wavenumber [m^-1]', 'Imaginary Part Wavenumber [m^-1]', 'Real Part Normalized Impedance [-]', 'Imaginary Part Normalized Impedance [-]'};
+            N = size(A,1);
+            for ii = 1:length(obj.Frequency)
+                A{ii+N,1} = obj.Frequency(ii);
+                A{ii+N,2} = real(obj.WaveNumber(ii));
+                A{ii+N,3} = imag(obj.WaveNumber(ii));
+                A{ii+N,4} = real(obj.Impedance(ii));
+                A{ii+N,5} = imag(obj.Impedance(ii));
+            end
+            xlswrite(FileName,A)
+        end
+        
+        function obj = ExportToExcel(obj,FileName,Comments)
+            %Save Information  on the measurement 
+            A = {'Comments: ',Comments ;...
+                 '','';...
+                 'Measurement Conditions','';...                 
+                 'Mean Flow Velocity [m/s] ', abs(obj.FlowVelocity);...
+                 'Speed of Sound [m/s]', obj.SpeedOfSound;...
+                 'Density [kg/m^3]', obj.Density;...
+                 '','';...
+                 'Algorithm Details','';...
+                 'Method ', obj.Method;...
+                 'Epsilon', obj.Epsilon;...
+                 'Boundary Condition', 'Ingard-Myers';...
+                 '','';...
+                 };
+            for ii = 1:size(A,1)
+                for jj = 3:5 
+                    A{ii,jj} = ''; 
+                end
+            end
+            A(end + 1,:) = {'Frequency [Hz]', 'Real Part Wavenumber [m^-1]', 'Imaginary Part Wavenumber [m^-1]', 'Real Part Normalized Impedance [-]', 'Imaginary Part Normalized Impedance [-]'};
+            N = size(A,1);
+            for ii = 1:length(obj.Frequency)
+                A{ii+N,1} = obj.Frequency(ii);
+                A{ii+N,2} = real(obj.WaveNumber(ii));
+                A{ii+N,3} = imag(obj.WaveNumber(ii));
+                A{ii+N,4} = real(obj.Impedance(ii));
+                A{ii+N,5} = imag(obj.Impedance(ii));
+            end
+            xlswrite(FileName,A)
         end
     end
     
