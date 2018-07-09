@@ -137,8 +137,6 @@ classdef PronyImpedance < PronyMethod
         function obj = ExportToPGF(obj,FileName,Comments)
             Header = {'Frequency', 'RealWavenumber', 'ImaginaryWavenumber', 'RealImpedance', 'ImaginaryImpedance'};
             Data =  [obj.Frequency; real(obj.WaveNumber); imag(obj.WaveNumber); real(obj.Impedance); imag(obj.Impedance)];
-            size(Data)
-            size(Header)
             WriteToTextFile_PGF(FileName, Header, Data.', Comments)
         end
     end
