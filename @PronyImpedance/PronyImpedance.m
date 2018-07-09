@@ -49,8 +49,8 @@ classdef PronyImpedance < PronyMethod
             obj.SpeedOfSound = Properties.SpeedOfSound;
             obj.MachNumber = obj.FlowVelocity/obj.SpeedOfSound;
            
-            obj.CalculateWaveNumbers()
-            obj.IngerdMeyersBoundaryCondition()
+            obj.CalculateWaveNumbers();
+            obj.IngardMeyersBoundaryCondition();
 %           obj.PlotImpedance();
         end
         
@@ -65,7 +65,7 @@ classdef PronyImpedance < PronyMethod
             obj.WaveNumberY = sqrt((obj.FreeFieldWaveNumber-obj.MachNumber.*obj.WaveNumberZ).^2-obj.WaveNumberX.^2-obj.WaveNumberZ.^2);                    
         end
         
-        function obj = IngerdMeyersBoundaryCondition(obj)
+        function obj = IngardMeyersBoundaryCondition(obj)
             obj.Impedance =  (obj.WaveNumberY.*tan(obj.WaveNumberY.*obj.HeightY)).^-1 .* 1i./obj.FreeFieldWaveNumber.*(obj.FreeFieldWaveNumber-obj.MachNumber.*obj.WaveNumberZ).^2; 
             
         end        
