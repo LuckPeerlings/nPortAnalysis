@@ -325,11 +325,7 @@ Type
         function [AX1,AX2] = plotRealImag(obj,XValues,SD) 
            
             Value = obj.Value.';
-            if isempty(obj.CorrVar)
-                TotVar = squeeze(sum(obj.Var,1));
-            else
-                TotVar = squeeze(sum(obj.Var,1) + sum(obj.CorrVar,1));
-            end
+            TotVar = obj.UCMatrix;
             if nargin == 1
                 XValues = [1:length(Value)].';
                 SD = 1.65;
@@ -343,8 +339,8 @@ Type
             %Representation of the Uncertainty of Vectors and Complex
             %Numbers, Dylan F. Willians, C.m. Wand and Uwe Arz
             figure;
-            Top = real( Value) + SD*sqrt(TotVar(:,4));
-            Bottom = flipud(real( Value) - SD*sqrt(TotVar(:,4)));
+            Top = real( Value) + SD*sqrt(TotVar(:,1));
+            Bottom = flipud(real( Value) - SD*sqrt(TotVar(:,1)));
 
 
             AX1 = subplot(1,2,1);
