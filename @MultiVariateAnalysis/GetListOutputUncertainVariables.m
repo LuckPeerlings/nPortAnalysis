@@ -13,8 +13,6 @@ for ii = 1:length(obj.UVInputList)
                                                 ,obj.UVInputList(ii).UV.Value); 
     end
 end
-
-
 obj.BaseInput = BaseInput;
 BaseOutput = UpdateSolution(obj,BaseInput);
 

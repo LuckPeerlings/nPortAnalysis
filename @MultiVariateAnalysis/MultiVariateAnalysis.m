@@ -78,9 +78,9 @@ classdef MultiVariateAnalysis < handle
 
     end
     methods (Static)
-        LocationName = FindObjectInStructure(Input,ObjectName,varargin)
+        LocationName = FindObjectInStructure(Input,ObjectName,varargin);
         
-        Sensitivity = MultiVariateAnalysis.CalcSensitivity(BaseOutput,PerturbedOutput)
+        Sensitivity = MultiVariateAnalysis.CalcSensitivity(BaseOutput,PerturbedOutput);
     end
 
 

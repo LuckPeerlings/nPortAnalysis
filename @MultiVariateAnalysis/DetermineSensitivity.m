@@ -9,7 +9,8 @@ function obj = DetermineSensitivity(obj)
 %IMPLEMENT: FIX WHEN A VALUE IS ZERO; IT DOES NOT SUPPORT VECTORIZED
 %PROBLEMS
 
-%Values for the perturbations applied
+%Values if fixed perturbations are applied
+FixedPerturbations = false;
 RELPERTURBATION = 5e-3; %If the input is unequal to zero
 PERTURBATION = 5e-3;    %if the input is equal to zero
 
@@ -21,15 +22,23 @@ Index = 1;
 for nn = 1:length(obj.UVInputList)     
     UV = obj.UVInputList(nn).UV; %The uncertain variable
     ii = obj.UVInputList(nn).Pos; %The index of the inputvector where the uncertain variabel is located
-    for jj = 1:size(UV.Value,1)   
+    for jj = 1:size(UV.Value,1)  
         
+        if FixedPerturbations == false
+            %Determine the perturbations based on twice the variance of the
+            %parameters. (95% Confidence interval)
+            RELPERTURBATION = 2*sqrt(squeeze(UV.UCMatrix(jj,:,1)).^2 + squeeze(UV.UCMatrix(jj,:,4)).^2) ./ abs(UV.Value(jj,:));        
+            PERTURBATION = 2*sqrt(squeeze(UV.UCMatrix(jj,:,1)).^2 + squeeze(UV.UCMatrix(jj,:,4)).^2);     
+        end
         PerturbedInput = obj.BaseInput;
         %Calculating the sensitivity of the output parameters do
         %perturbations in the real part
         PerturbedValue_Real = UV.Value;
-        PerturbedValue_Real(jj,:) = real(UV.Value(jj,:))*(1+RELPERTURBATION) + ...
+        
+        if isinf(RELPERTURBATION); RELPERTURBATION =0; end        
+        PerturbedValue_Real(jj,:) = real(UV.Value(jj,:)).*(1+RELPERTURBATION) + ...
                   1i*imag((UV.Value(jj,:)));
-        Perturbation = real(UV.Value(jj,:))*(RELPERTURBATION);
+        Perturbation = real(UV.Value(jj,:)).*(RELPERTURBATION);
         if PerturbedValue_Real(jj) == 0                  
             PerturbedValue_Real(jj) = PERTURBATION;
             Perturbation = PERTURBATION;
@@ -46,11 +55,11 @@ for nn = 1:length(obj.UVInputList)
         if ~isreal(UV.Value) 
             PerturbedValue_Imag = UV.Value;
             PerturbedValue_Imag(jj,:) = real(UV.Value(jj,:)) + ...
-                                  1i*imag((UV.Value(jj,:)))*(1+RELPERTURBATION);
-            Perturbation = RELPERTURBATION*1i*imag(UV.Value(jj,:));
+                                  1i*imag((UV.Value(jj,:))).*(1+RELPERTURBATION);
+            Perturbation = RELPERTURBATION.*1i.*imag(UV.Value(jj,:));
             if PerturbedValue_Imag(jj) == 0
-                PerturbedValue_Imag(jj) = 1i*PERTURBATION;
-                Perturbation = 1i*PERTURBATION;
+                PerturbedValue_Imag(jj) = 1i.*PERTURBATION;
+                Perturbation = 1i.*PERTURBATION;
             end
             if isempty(obj.UVInputList(nn).StructPos)  
                 PerturbedInput = obj.BaseInput; %Reset the perturbation added by the real part
