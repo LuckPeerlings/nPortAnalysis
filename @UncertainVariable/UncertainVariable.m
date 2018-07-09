@@ -303,24 +303,24 @@ Type
             end
            
             CoVar_Group = zeros(length(GroupNameUnique),size(obj.Value,2),4);
-             for nn = 1:length(GroupNameUnique)
+            for nn = 1:length(GroupNameUnique)
                 for jj = 1:length(obj.Group)
                     if strcmp(obj.Group{jj},GroupNameUnique{nn})
-                        Covar_Group(nn,:,:) = CoVar_Group(nn,:,:) + obj.Var(jj,:,:);                        
-                    end
-                    
+                        CoVar_Group(nn,:,:) = CoVar_Group(nn,:,:) + obj.Var(jj,:,:);               
+                    end                    
                 end
              end
              figure;
              subplot(1,2,1)
-             area(XValues, squeeze(Covar_Group(:,:,1).'))
+             area(XValues, squeeze(CoVar_Group(:,:,1).'))
              legend( GroupNameUnique{:})                      
              title('Variance distribution Real Value')
              
              subplot(1,2,2)
-             area(XValues, squeeze(Covar_Group(:,:,4).'))
+             area(XValues, squeeze(CoVar_Group(:,:,4).'))
              legend( GroupNameUnique{:})               
              title('Variance distribution Imaginary Value')
+             
         end
         function [AX1,AX2] = plotRealImag(obj,XValues,SD) 
            
@@ -407,6 +407,16 @@ Type
         %double.
         %The list is not exhaustive and operators have to be added
         %depending on the need of the current classes.
+        function r = cos(obj1)
+            [a,~] = CheckOverload(obj1,[]);
+            r = UncertainVariable;
+            r.Value = builtin('cos',a);                     
+        end
+        function r = sin(obj1)
+            [a,~] = CheckOverload(obj1,[]);
+            r = UncertainVariable;
+            r.Value = builtin('sin',a);                     
+        end
         function r = sqrt(obj1)
             [a,~] = CheckOverload(obj1,[]);
             r = UncertainVariable;
