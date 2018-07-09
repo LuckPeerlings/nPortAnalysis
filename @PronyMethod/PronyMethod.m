@@ -294,7 +294,7 @@ classdef PronyMethod < matlab.mixin.Copyable & matlab.mixin.SetGet
             %positions X.            
             Pressure = zeros(1,length(obj.MicPositions));
             for ii = 1:length(k) %NrModes
-                Pressure = Pressure + A(ii) * exp(1i * k(ii) * obj.MicPositions);
+                Pressure = Pressure + A(ii) * exp(-1i * k(ii) * obj.MicPositions);
             end
             SNR = 0.05;
             L = length(Pressure);
@@ -488,7 +488,7 @@ classdef PronyMethod < matlab.mixin.Copyable & matlab.mixin.SetGet
             f_i = log(Z_1);
             
             for ii = 1:length(f_i)
-                kappa(ii) = -1i * f_i(ii) / dX;
+                kappa(ii) = f_i(ii) / (-1i*dX);
             end
             
             % At last, the modes are sorted by decreasing amplitudes :
@@ -632,7 +632,7 @@ classdef PronyMethod < matlab.mixin.Copyable & matlab.mixin.SetGet
             f_i = log(Z);
             
             for ii = 1:length(f_i)
-                kappa(ii) = -1i * f_i(ii) / dX;
+                kappa(ii) = f_i(ii) / (-1i*dX);
             end
             
             % At last, the modes are sorted by decreasing amplitudes :
@@ -724,7 +724,7 @@ classdef PronyMethod < matlab.mixin.Copyable & matlab.mixin.SetGet
             % The wavenumbers can the be deduced from the exponentials :
             
             f_i = log(Z);
-            kappa = -1i * f_i / dX;
+            kappa = f_i / (-1i*dX);
             
             % As the measurement points are equally spaced, one can assume
             % that the coefficients of the exponentials are the solution of
