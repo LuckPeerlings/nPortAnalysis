@@ -7,6 +7,9 @@ addpath('.\..\..\Methods')
 clear all
 %Ask for the output directory and the folders with the input data
 DATADIRS = uipickfiles();
+
+
+UsePreviousEpsilon = true;
 for dd = 1:length(DATADIRS)
     DATADIR = [DATADIRS{dd},'\'];
     WaveDirections = {'Upstream','Downstream'};
@@ -25,13 +28,26 @@ for dd = 1:length(DATADIRS)
             error('WaveDirection incorrectly defined')
         end
         
+        if UsePreviousEpsilon == true
+            FileList = dir(DATADIR);
+            for ii = 1:length(FileList)
+                if strcmp(FileList(ii).name,[WaveDirections{ww},'.mat'])
+                    OldData = load([DATADIR,WaveDirections{ww},'.mat']);
+                end            
+            end
+        end
+        
         Z_cal  = load('.\Calibration\Cal_2018_04_10.mat');
         C_fitted = zeros(size(Z_cal.C,2),length(MeasData.Ref_Freq));
         for ii=1:size(Z_cal.C,2)    
             C_fitted(ii,:) = interp1(Z_cal.f_cal, real(Z_cal.C(:,ii)),MeasData.Ref_Freq,'linear','extrap') + 1i*interp1(Z_cal.f_cal, imag(Z_cal.C(:,ii)),MeasData.Ref_Freq,'linear','extrap');
         end        
         MeasData.Z = MeasData.Z./C_fitted; 
-        Epsilon = 65e-2;
+        if UsePreviousEpsilon == true
+            Epsilon = OldData.Prony.Epsilon;
+        else
+            Epsilon = 65e-2;
+        end
         X = 0:0.055:9*0.055;
 
         MicPositions = X.';
@@ -40,9 +56,9 @@ for dd = 1:length(DATADIRS)
         %Calibrate the pressures
         
         if strcmp(WaveDirection,'Upstream')
-            FlowVelocity = Measurement.U*Measurement.WaveCal.Velocity_Corr.Port2;
+            FlowVelocity = abs(Measurement.U*Measurement.WaveCal.Velocity_Corr.Port2);
         elseif  strcmp(WaveDirection,'Downstream')
-            FlowVelocity = Measurement.U*Measurement.WaveCal.Velocity_Corr.Port2;
+            FlowVelocity = abs(Measurement.U*Measurement.WaveCal.Velocity_Corr.Port1);
         else
             error('WaveDirection incorrectly defined')
         end
@@ -56,10 +72,11 @@ for dd = 1:length(DATADIRS)
         Prony.PlotImpedance;
         %Stop executing and see if the data is correct, use dbcont to save
         %the data and go to the next datafile
-        keyboard
+%         keyboard
         save([DATADIR,WaveDirection,'.mat'],'Prony');
         savefig([DATADIR,WaveDirection,'.fig'])
         Descriptor = fliplr(strtok(fliplr(DATADIR),'\'));
         Prony.ExportToExcel([DATADIR,WaveDirection,'.xls'],{['Directory: ',Descriptor,' WaveDirection: ',WaveDirection]}) 
+%         close all;
     end
 end
